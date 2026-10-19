@@ -84,7 +84,7 @@ Landscape orientation is recommended for the bottom toolbar.
 
 ## Verification and remaining limits
 
-See the release notes and linked Actions run for the exact build result. Compilation is separate from hands-on verification: camera tracking, Photos saving, microphone behavior, and touch usability still need a real iPhone check. Windows has been runtime tested separately. Scenes are currently saved locally in each app; they do not synchronize. No Android or Mac package is included.
+The iPhone device build and simulator test passed in [run 39278500408](https://github.com/Moealbunni/film-space/actions/runs/39278500408), source commit `aac895830ba811da74ed4ff7f734fe512acdcb24`. The test checks all object types, save/load, duplication/deletion, object scale locking/reset and constrained camera position/rotation. IPA archive integrity, version 1.1 (build 2), and minimum iOS 18 were checked. Compilation and simulator checks are separate from hands-on verification: camera tracking, Photos saving, microphone behavior, and touch usability still need a real iPhone check. Windows has been runtime tested separately. Scenes are currently saved locally in each app; they do not synchronize. No Android or Mac package is included.
 
 
 ## Axis locks, resets, and direct controls
