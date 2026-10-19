@@ -7,7 +7,7 @@ A local virtual studio: arrange colored 3D reference objects, then move your iPh
 ## Downloads
 
 - [iPhone 1.1 release and unsigned IPA](https://github.com/Moealbunni/film-space/releases/tag/iphone-v1.1.0)
-- [Windows 0.3 app and source](https://github.com/Moealbunni/film-space-universal/releases/tag/v0.3.0)
+- [Windows 0.3 app and source](https://github.com/Moealbunni/film-space-universal/releases/tag/v0.3.1)
 - [Build workflow and downloadable artifacts](https://github.com/Moealbunni/film-space/actions/workflows/build-ipa.yml)
 
 **An unsigned IPA needs signing before installation. It is not an App Store or TestFlight download.** iOS 18 or later and an ARKit-capable iPhone are required. The Windows application and iPhone app run separately; live phone-to-PC control and scene transfer between them are not implemented.
