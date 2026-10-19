@@ -22,6 +22,7 @@ struct VirtualStudioView: View {
         let humans = sceneState.humans
         let selectedID = sceneState.selectedHumanID
         let floorSize = sceneState.floorSize
+        let focalLength = sceneState.focalLength
 
         RealityView { content in
             content.add(cameraController.makeCameraEntity())
@@ -30,6 +31,10 @@ struct VirtualStudioView: View {
             content.add(root)
             studioRoot = root
 
+            if let camera = cameraController.cameraEntity {
+                var lens = camera.components[PerspectiveCameraComponent.self] ?? PerspectiveCameraComponent()
+                lens.fieldOfViewInDegrees = focalLength.horizontalFOVDegrees; camera.components.set(lens)
+            }
             SceneEnvironment.updateFloor(root, size: floorSize, showGuides: true)
             SceneContentBuilder.syncHumans(
                 placements: humans,
@@ -38,6 +43,10 @@ struct VirtualStudioView: View {
             )
         } update: { _ in
             guard let root = studioRoot else { return }
+            if let camera = cameraController.cameraEntity {
+                var lens = camera.components[PerspectiveCameraComponent.self] ?? PerspectiveCameraComponent()
+                lens.fieldOfViewInDegrees = focalLength.horizontalFOVDegrees; camera.components.set(lens)
+            }
             SceneEnvironment.updateFloor(root, size: floorSize, showGuides: true)
             SceneContentBuilder.syncHumans(
                 placements: humans,

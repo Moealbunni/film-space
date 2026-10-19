@@ -51,7 +51,7 @@ final class OrbitCameraController {
         let eye = SIMD3<Float>(pose.columns.3.x, pose.columns.3.y, pose.columns.3.z)
         let forward = SIMD3<Float>(-pose.columns.2.x, -pose.columns.2.y, -pose.columns.2.z)
         target = eye + forward * distance
-        azimuth = angles.y; elevation = -angles.x
+        azimuth = angles.y; elevation = -angles.x; roll = angles.z
         pendingManualPose = pose; liveCameraTransform = pose
         updateCameraTransform()
     }
@@ -66,6 +66,7 @@ final class OrbitCameraController {
     }
     var azimuth: Float = 0.6
     var elevation: Float = 0.35
+    var roll: Float = 0
     var distance: Float = 6
     var target: SIMD3<Float> = [0, 0.8, 0]
 
@@ -162,6 +163,7 @@ final class OrbitCameraController {
         elevation = asin(min(max(dir.y, -1), 1))
         azimuth = atan2(dir.x, dir.z)
         target = eye - dir * distance
+        roll = Self.angles(m).z
         updateCameraTransform()
     }
 
@@ -176,6 +178,7 @@ final class OrbitCameraController {
 
         camera.position = target + SIMD3(x, y, z)
         camera.look(at: target, from: camera.position, relativeTo: nil)
+        camera.orientation = camera.orientation * simd_quatf(angle: roll, axis: [0,0,1])
         camera.transform = Transform(matrix: constrained(camera.transform.matrix))
     }
 
@@ -188,7 +191,9 @@ final class OrbitCameraController {
         let y = distance * sin(elevation)
         let z = horizontal * cos(azimuth)
         let eye = target + SIMD3<Float>(x, y, z)
-        return constrained(Self.lookAtTransform(eye: eye, center: target, up: [0, 1, 0]))
+        var pose = Transform(matrix: Self.lookAtTransform(eye: eye, center: target, up: [0, 1, 0]))
+        pose.rotation = pose.rotation * simd_quatf(angle: roll, axis: [0,0,1])
+        return constrained(pose.matrix)
     }
 
     static func lookAtTransform(eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>) -> simd_float4x4 {

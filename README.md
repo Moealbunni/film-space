@@ -7,7 +7,7 @@ A local virtual studio: arrange colored 3D reference objects, then move your iPh
 ## Downloads
 
 - [iPhone 1.1 release and unsigned IPA](https://github.com/Moealbunni/film-space/releases/tag/iphone-v1.1.0)
-- [Windows 0.2 app and source](https://github.com/Moealbunni/film-space-universal/releases/tag/v0.2.0)
+- [Windows 0.3 app and source](https://github.com/Moealbunni/film-space-universal/releases/tag/v0.3.0)
 - [Build workflow and downloadable artifacts](https://github.com/Moealbunni/film-space/actions/workflows/build-ipa.yml)
 
 **An unsigned IPA needs signing before installation. It is not an App Store or TestFlight download.** iOS 18 or later and an ARKit-capable iPhone are required. The Windows application and iPhone app run separately; live phone-to-PC control and scene transfer between them are not implemented.
@@ -85,3 +85,17 @@ Landscape orientation is recommended for the bottom toolbar.
 ## Verification and remaining limits
 
 See the release notes and linked Actions run for the exact build result. Compilation is separate from hands-on verification: camera tracking, Photos saving, microphone behavior, and touch usability still need a real iPhone check. Windows has been runtime tested separately. Scenes are currently saved locally in each app; they do not synchronize. No Android or Mac package is included.
+
+
+## Axis locks, resets, and direct controls
+
+- Camera **Position X/Y/Z** locks hold individual world coordinates. Camera **Rotation X/Y/Z** locks hold the current angles: X is tilt, Y is heading, Z is roll. You can enter 45 degrees and lock that rotation axis. Other axes remain free. Locks remain active when changing modes.
+- **Lock lens / zoom** prevents changes to focal length. A perspective camera has no useful object-size scale, so use lens controls for zoom.
+- Objects have separate locks for all X/Y/Z position, rotation, and scale values. A closed lock holds that value during dragging, resizing, and quick edits.
+- **Reset position** returns an object to the origin; **Reset rotation** returns all angles to zero; **Reset size** returns all scales to 1. Each reset clears its group's locks. Reset size makes a child adult-sized; use Smaller to shrink it again.
+- For the camera, Position Reset returns to (0, 1.6, 4) meters; Rotation Reset faces along the default forward direction. **Reset camera** clears position/rotation locks and full viewpoint locking, then restores both defaults.
+- On Windows, select an object and use its floating **Move / Rotate / Resize** buttons to show draggable 3D handles. Bigger/Smaller and Lift/Lower are beside the object. The side inspector provides exact numbers and locks.
+- On iPhone, tap an object or select it in Objects & scene. The right-hand quick panel provides Bigger/Smaller, Lift/Lower and Edit details. **Camera controls** opens the axis lock panel in either mode.
+- Resizing from ground level keeps the object's base on the floor; Lift/Lower changes its height deliberately. Floor resizing scales the checkerboard squares along with the ground.
+- Recording captures only the scene. Quick panels and 3D editing handles are excluded.
+
