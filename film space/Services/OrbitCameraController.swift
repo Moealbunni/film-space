@@ -10,6 +10,60 @@ import simd
 @Observable
 final class OrbitCameraController {
     var isViewLocked = false
+    var positionLocks = [false, false, false]
+    var rotationLocks = [false, false, false]
+    var lensLocked = false
+    var lockedPosition: SIMD3<Float> = .zero
+    var lockedRotation: SIMD3<Float> = .zero
+    var pendingManualPose: simd_float4x4?
+
+    static func angles(_ m: simd_float4x4) -> SIMD3<Float> {
+        let x = asin(min(max(-m.columns.2.y, -1), 1))
+        if abs(m.columns.2.y) < 0.99999 {
+            return [x, atan2(m.columns.2.x, m.columns.2.z), atan2(m.columns.0.y, m.columns.1.y)]
+        }
+        return [x, atan2(-m.columns.0.z, m.columns.0.x), 0]
+    }
+    static func pose(position: SIMD3<Float>, angles: SIMD3<Float>) -> simd_float4x4 {
+        let q = simd_quatf(angle: angles.y, axis: [0,1,0]) * simd_quatf(angle: angles.x, axis: [1,0,0]) * simd_quatf(angle: angles.z, axis: [0,0,1])
+        return Transform(scale: .one, rotation: q, translation: position).matrix
+    }
+    func constrained(_ proposed: simd_float4x4) -> simd_float4x4 {
+        var position = SIMD3<Float>(proposed.columns.3.x, proposed.columns.3.y, proposed.columns.3.z)
+        var angles = Self.angles(proposed)
+        for i in 0..<3 {
+            if positionLocks[i] { position[i] = lockedPosition[i] }
+            if rotationLocks[i] { angles[i] = lockedRotation[i] }
+        }
+        return Self.pose(position: position, angles: angles)
+    }
+    func toggleAxis(_ group: String, axis: Int, cameraMode: Bool) {
+        let pose = cameraMode ? (liveCameraTransform ?? worldTransform) : worldTransform
+        if group == "position" {
+            lockedPosition[axis] = pose.columns.3[axis]; positionLocks[axis].toggle()
+        } else {
+            lockedRotation[axis] = Self.angles(pose)[axis]; rotationLocks[axis].toggle()
+        }
+        setManualPose(pose)
+    }
+    func setManualPose(_ pose: simd_float4x4) {
+        let angles = Self.angles(pose)
+        let eye = SIMD3<Float>(pose.columns.3.x, pose.columns.3.y, pose.columns.3.z)
+        let forward = SIMD3<Float>(-pose.columns.2.x, -pose.columns.2.y, -pose.columns.2.z)
+        target = eye + forward * distance
+        azimuth = angles.y; elevation = -angles.x
+        pendingManualPose = pose; liveCameraTransform = pose
+        updateCameraTransform()
+    }
+    func resetAxes(_ group: String, cameraMode: Bool) {
+        let current = cameraMode ? (liveCameraTransform ?? worldTransform) : worldTransform
+        var position = SIMD3<Float>(current.columns.3.x,current.columns.3.y,current.columns.3.z)
+        var angles = Self.angles(current)
+        isViewLocked = false
+        if group == "position" || group == "all" { positionLocks = [false,false,false]; position = [0,1.6,4] }
+        if group == "rotation" || group == "all" { rotationLocks = [false,false,false]; angles = .zero }
+        setManualPose(Self.pose(position: position, angles: angles))
+    }
     var azimuth: Float = 0.6
     var elevation: Float = 0.35
     var distance: Float = 6
@@ -113,6 +167,7 @@ final class OrbitCameraController {
 
     func updateCameraTransform() {
         guard let camera = cameraEntity else { return }
+        if isViewLocked, let lockedTransform { camera.transform = Transform(matrix: lockedTransform); return }
 
         let horizontal = distance * cos(elevation)
         let x = horizontal * sin(azimuth)
@@ -121,17 +176,19 @@ final class OrbitCameraController {
 
         camera.position = target + SIMD3(x, y, z)
         camera.look(at: target, from: camera.position, relativeTo: nil)
+        camera.transform = Transform(matrix: constrained(camera.transform.matrix))
     }
 
     /// Camera-to-world transform matching the current orbit pose.
     /// Used as the starting pose when entering Camera mode.
     var worldTransform: simd_float4x4 {
+        if isViewLocked, let lockedTransform { return lockedTransform }
         let horizontal = distance * cos(elevation)
         let x = horizontal * sin(azimuth)
         let y = distance * sin(elevation)
         let z = horizontal * cos(azimuth)
         let eye = target + SIMD3<Float>(x, y, z)
-        return Self.lookAtTransform(eye: eye, center: target, up: [0, 1, 0])
+        return constrained(Self.lookAtTransform(eye: eye, center: target, up: [0, 1, 0]))
     }
 
     static func lookAtTransform(eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>) -> simd_float4x4 {

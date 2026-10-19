@@ -116,6 +116,10 @@ struct ARCameraView: UIViewRepresentable {
 
         @MainActor
         private func applyDeviceMotion(_ deviceTransform: simd_float4x4) {
+            if let manual = cameraController.pendingManualPose {
+                editCameraTransform = manual; referenceTransform = deviceTransform
+                cameraController.pendingManualPose = nil
+            }
             // Return-to-lock: rebase onto the locked pose at the current physical
             // position so the camera snaps back to the locked spot.
             if cameraController.pendingRecenter, let locked = cameraController.lockedTransform {
@@ -165,7 +169,7 @@ struct ARCameraView: UIViewRepresentable {
             let yawAlign = simd_quatf(angle: yaw(of: edit) - yaw(of: reference), axis: [0, 1, 0])
             let newPosition = translation(edit) + yawAlign.act(worldDelta) * sceneState.movementScale
 
-            camera.transform = Transform(scale: .one, rotation: newRotation, translation: newPosition)
+            camera.transform = Transform(matrix: cameraController.constrained(Transform(scale: .one, rotation: newRotation, translation: newPosition).matrix))
             cameraController.liveCameraTransform = camera.transform.matrix
 
             applyFocalLengthIfNeeded()

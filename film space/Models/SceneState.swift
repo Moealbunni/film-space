@@ -47,6 +47,9 @@ struct HumanPlacement: Identifiable, Equatable, Codable {
     var scale: SIMD3<Float> = [1, 1, 1]
     var rotationX: Float = 0
     var rotationZ: Float = 0
+    var positionLocks = [false, false, false]
+    var rotationLocks = [false, false, false]
+    var scaleLocks = [false, false, false]
 
     init(id: UUID = UUID(), position: SIMD3<Float> = [0, 0, 0], rotationY: Float = 0) {
         self.id = id
@@ -101,7 +104,27 @@ final class SceneState {
     }
     func editSelected(_ change: (inout HumanPlacement) -> Void) {
         guard let index = humans.firstIndex(where: { $0.id == selectedHumanID }) else { return }
+        let old = humans[index]
         change(&humans[index])
+        for axis in 0..<3 {
+            if old.positionLocks[axis] { humans[index].position[axis] = old.position[axis] }
+            if old.scaleLocks[axis] { humans[index].scale[axis] = old.scale[axis] }
+        }
+        if old.rotationLocks[0] { humans[index].rotationX = old.rotationX }
+        if old.rotationLocks[1] { humans[index].rotationY = old.rotationY }
+        if old.rotationLocks[2] { humans[index].rotationZ = old.rotationZ }
+    }
+    func toggleObjectLock(_ group: String, axis: Int) {
+        guard let i = humans.firstIndex(where: { $0.id == selectedHumanID }) else { return }
+        if group == "position" { humans[i].positionLocks[axis].toggle() }
+        else if group == "rotation" { humans[i].rotationLocks[axis].toggle() }
+        else { humans[i].scaleLocks[axis].toggle() }
+    }
+    func resetObject(_ group: String) {
+        guard let i = humans.firstIndex(where: { $0.id == selectedHumanID }) else { return }
+        if group == "position" { humans[i].positionLocks = [false,false,false]; humans[i].position = .zero }
+        else if group == "rotation" { humans[i].rotationLocks = [false,false,false]; humans[i].rotationX = 0; humans[i].rotationY = 0; humans[i].rotationZ = 0 }
+        else { humans[i].scaleLocks = [false,false,false]; humans[i].scale = [1,1,1] }
     }
     func duplicateSelected() {
         guard let old = selectedHuman else { return }
@@ -139,17 +162,17 @@ final class SceneState {
 
     func updateHumanPosition(id: UUID, position: SIMD3<Float>) {
         guard let index = humans.firstIndex(where: { $0.id == id }) else { return }
-        humans[index].position = position
+        for axis in 0..<3 where !humans[index].positionLocks[axis] { humans[index].position[axis] = position[axis] }
     }
 
     func updateHumanRotation(id: UUID, rotationY: Float) {
         guard let index = humans.firstIndex(where: { $0.id == id }) else { return }
-        humans[index].rotationY = rotationY
+        if !humans[index].rotationLocks[1] { humans[index].rotationY = rotationY }
     }
 
     func rotateSelectedHuman(by delta: Float) {
         guard let id = selectedHumanID,
               let index = humans.firstIndex(where: { $0.id == id }) else { return }
-        humans[index].rotationY += delta
+        if !humans[index].rotationLocks[1] { humans[index].rotationY += delta }
     }
 }

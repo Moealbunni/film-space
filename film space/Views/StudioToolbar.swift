@@ -159,7 +159,7 @@ struct StudioToolbar: View {
 
     private var focalLengthButton: some View {
         Button {
-            sceneState.cycleFocalLength()
+            if !cameraController.lensLocked { sceneState.cycleFocalLength() }
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "camera.aperture")
@@ -181,6 +181,9 @@ struct StudioToolbar: View {
             ForEach(AppMode.allCases, id: \.self) { mode in
                 Button {
                     sceneState.isRecording = false
+                    if sceneState.mode == .camera && mode == .edit, let live = cameraController.liveCameraTransform {
+                        cameraController.setManualPose(live)
+                    }
                     sceneState.mode = mode
                 } label: {
                     Text(mode.rawValue)
