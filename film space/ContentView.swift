@@ -10,6 +10,8 @@ struct ContentView: View {
     @State private var sceneState = SceneState()
     @State private var cameraController = OrbitCameraController()
 
+    @State private var showRecordingControls = false
+    @State private var showLink = false
     @State private var showEditor = false
     @State private var showCamera = false
 
@@ -25,6 +27,7 @@ struct ContentView: View {
             }
             .ignoresSafeArea()
 
+            if !sceneState.isRecording || showRecordingControls {
             VStack {
                 HStack {
                     if sceneState.mode == .edit {
@@ -34,6 +37,8 @@ struct ContentView: View {
                         Text(sceneState.trackingStatus).font(.caption).padding(8).background(.ultraThinMaterial, in: Capsule())
                     }
                     Button("Camera controls") { showCamera = true }.buttonStyle(.borderedProminent)
+                    if sceneState.isRecording { Button("Hide controls") { showRecordingControls = false } }
+                    Button("Desktop link") { showLink = true }.buttonStyle(.bordered).disabled(sceneState.isRecording)
                     Spacer()
                     if cameraController.isViewLocked {
                         Button("Unlock viewpoint") { cameraController.isViewLocked = false }.buttonStyle(.borderedProminent)
@@ -56,7 +61,16 @@ struct ContentView: View {
                 StudioToolbar(sceneState: sceneState, cameraController: cameraController)
                     .padding(.bottom, 16)
             }
+            } else {
+                VStack { Spacer(); HStack {
+                    Button("Controls") { showRecordingControls = true }.buttonStyle(.bordered)
+                    Spacer()
+                    Button("■ Stop recording") { sceneState.isRecording = false }.buttonStyle(.borderedProminent).tint(.red)
+                }.padding() }
+            }
         }
+        .onChange(of: sceneState.isRecording) { _, _ in showRecordingControls = false }
+        .sheet(isPresented: $showLink) { DesktopLinkView(state: sceneState) }
         .sheet(isPresented: $showCamera) {
             NavigationStack {
                 Form { CameraAxisPanel(sceneState: sceneState, cameraController: cameraController) }

@@ -50,4 +50,30 @@ struct film_spaceTests {
         #expect(abs(constrained.columns.3.z - 4) < 0.001)
         #expect(abs(OrbitCameraController.angles(constrained).y - Float.pi/4) < 0.001)
     }
+    @Test @MainActor func localPairingAndSceneTransfer() throws {
+        let token = String(repeating: "a", count: 48)
+        let pair = try DesktopLink.parsePair("filmspace://pair?host=192.168.1.2&port=54321&token=\(token)")
+        #expect(pair.0.absoluteString == "http://192.168.1.2:54321")
+        for host in ["8.8.8.8", "localhost", "192.168.x.1.2", "192..168.1.2", "192.168.999.2"] {
+            #expect(throws: (any Error).self) { try DesktopLink.parsePair("filmspace://pair?host=\(host)&port=54321&token=\(token)") }
+        }
+        let source = SceneState()
+        for kind in ObjectKind.allCases { source.addObject(kind) }
+        source.floorSize = 75; source.focalLength = .mm24
+        source.editSelected { $0.position = [2,3,-4]; $0.scale = [2,3,4]; $0.rotationX = 0.2; $0.rotationY = 0.7; $0.colorHex = "FF0000" }
+        let encoded = try JSONEncoder().encode(LinkedScene(state: source))
+        var scene = try JSONDecoder().decode(LinkedScene.self, from: encoded)
+        let target = SceneState(); try scene.apply(to: target)
+        #expect(target.humans.count == 12)
+        #expect(target.floorSize == 75)
+        #expect(target.focalLength == .mm24)
+        #expect(target.humans.last?.position == SIMD3<Float>(2,3,-4))
+        #expect(target.humans.last?.scale == SIMD3<Float>(2,3,4))
+        #expect(target.humans.last?.colorHex == "FF0000")
+        #expect(target.humans.last?.rotationY == 0.7)
+        let previous = target.humans
+        scene.objects[0].scale = [-1,1,1]
+        #expect(throws: (any Error).self) { try scene.apply(to: target) }
+        #expect(target.humans == previous)
+    }
 }

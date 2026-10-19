@@ -12,6 +12,8 @@ enum AppMode: String, CaseIterable {
 }
 
 enum FocalLength: Float, CaseIterable {
+    case mm18 = 18
+    case mm24 = 24
     case mm35 = 35
     case mm50 = 50
     case mm75 = 75
@@ -60,6 +62,7 @@ struct HumanPlacement: Identifiable, Equatable, Codable {
 
 @Observable
 final class SceneState {
+    var desktopLink = DesktopLink()
     var mode: AppMode = .edit
     var humans: [HumanPlacement] = []
     var selectedHumanID: UUID?

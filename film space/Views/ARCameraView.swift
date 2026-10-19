@@ -46,6 +46,8 @@ struct ARCameraView: UIViewRepresentable {
         private var referenceTransform: simd_float4x4?
         private var lastHumanSignature = ""
         private var lastFocalLength: FocalLength?
+        private var previewBusy = false
+        private var lastPreview: TimeInterval = 0
 
         init(sceneState: SceneState, cameraController: OrbitCameraController) {
             self.sceneState = sceneState
@@ -152,7 +154,7 @@ struct ARCameraView: UIViewRepresentable {
                 camera.transform = Transform(matrix: locked)
                 editCameraTransform = locked; referenceTransform = deviceTransform
                 cameraController.liveCameraTransform = locked
-                applyFocalLengthIfNeeded(); syncRecording(); return
+                applyFocalLengthIfNeeded(); syncRecording(); streamPreview(); return
             }
             let edit = editCameraTransform
 
@@ -174,8 +176,20 @@ struct ARCameraView: UIViewRepresentable {
 
             applyFocalLengthIfNeeded()
             syncRecording()
+            streamPreview()
         }
 
+        private func streamPreview() {
+            let now = Date.timeIntervalSinceReferenceDate
+            guard sceneState.desktopLink.isConnected, !previewBusy, now-lastPreview >= 0.15, let arView else { return }
+            previewBusy = true; lastPreview = now
+            arView.snapshot(saveToHDR: false) { [weak self] image in
+                Task { @MainActor in
+                    guard let self else { return }; self.previewBusy = false
+                    if let image { self.sceneState.desktopLink.sendPreview(image, recording: self.sceneState.isRecording) }
+                }
+            }
+        }
         private func syncRecording() {
             guard let arView else { return }
             if sceneState.isRecording, !recorder.isRecording {
