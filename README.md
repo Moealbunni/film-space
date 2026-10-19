@@ -1,4 +1,4 @@
-# Film Space for iPhone — personal editor edition 1.1
+# Film Space for iPhone — personal editor edition 1.2
 
 Based on [Max Prokopp's Film Space](https://github.com/maxprokopp/film-space). Original project description and attribution are preserved in [UPSTREAM-README.md](UPSTREAM-README.md).
 
@@ -6,11 +6,11 @@ A local virtual studio: arrange colored 3D reference objects, then move your iPh
 
 ## Downloads
 
-- [iPhone 1.1 release and unsigned IPA](https://github.com/Moealbunni/film-space/releases/tag/iphone-v1.1.0)
-- [Windows 0.3 app and source](https://github.com/Moealbunni/film-space-universal/releases/tag/v0.3.1)
+- [iPhone 1.2 release and unsigned IPA](https://github.com/Moealbunni/film-space/releases/tag/iphone-v1.2.0)
+- [Windows 0.4 app and source](https://github.com/Moealbunni/film-space-universal/releases/tag/v0.4.0)
 - [Build workflow and downloadable artifacts](https://github.com/Moealbunni/film-space/actions/workflows/build-ipa.yml)
 
-**An unsigned IPA needs signing before installation. It is not an App Store or TestFlight download.** iOS 18 or later and an ARKit-capable iPhone are required. The Windows application and iPhone app run separately; live phone-to-PC control and scene transfer between them are not implemented.
+**An unsigned IPA needs signing before installation. It is not an App Store or TestFlight download.** iOS 18 or later and an ARKit-capable iPhone are required. Both apps can edit and record independently, transfer scenes over local Wi-Fi, and show the iPhone camera view on Windows.
 
 ## 1. Install from your Windows PC
 
@@ -84,7 +84,7 @@ Landscape orientation is recommended for the bottom toolbar.
 
 ## Verification and remaining limits
 
-The iPhone device build and simulator test passed in [run 39278500408](https://github.com/Moealbunni/film-space/actions/runs/39278500408), source commit `aac895830ba811da74ed4ff7f734fe512acdcb24`. The test checks all object types, save/load, duplication/deletion, object scale locking/reset and constrained camera position/rotation. IPA archive integrity, version 1.1 (build 2), and minimum iOS 18 were checked. Compilation and simulator checks are separate from hands-on verification: camera tracking, Photos saving, microphone behavior, and touch usability still need a real iPhone check. Windows has been runtime tested separately. Scenes are currently saved locally in each app; they do not synchronize. No Android or Mac package is included.
+The 1.2 release adds local pairing, scene transfers and recording-menu auto-hide. Build and simulator verification are recorded in GitHub Actions. Real-device ARKit tracking, Wi-Fi preview performance, Photos/audio behavior and touch usability remain pending; physical iPhone installation is deferred. No Android or Mac package is included.
 
 
 ## Axis locks, resets, and direct controls
@@ -98,4 +98,34 @@ The iPhone device build and simulator test passed in [run 39278500408](https://g
 - On iPhone, tap an object or select it in Objects & scene. The right-hand quick panel provides Bigger/Smaller, Lift/Lower and Edit details. **Camera controls** opens the axis lock panel in either mode.
 - Resizing from ground level keeps the object's base on the floor; Lift/Lower changes its height deliberately. Floor resizing scales the checkerboard squares along with the ground.
 - Recording captures only the scene. Quick panels and 3D editing handles are excluded.
+
+
+## Connect iPhone and Windows on Wi-Fi
+
+1. Install Windows **0.4.0** and iPhone **1.2**. Put both devices on the same private Wi-Fi network and keep both apps open.
+2. On Windows, expand **Connect iPhone**, then click **Start pairing**. If Windows asks, allow Film Space on **Private networks**. A QR code appears. If multiple addresses appear, choose your Wi-Fi adapter's address.
+3. On iPhone, tap **Desktop link → Scan desktop QR**. Scan the code displayed on Windows and allow **Local Network** access. You can also paste the pairing address and tap Connect.
+4. Tap **Done**, then choose **Camera** on iPhone. On Windows, click **Live Monitor**. You see the actual rendered iPhone camera view, plus its recording status. Click **Back to desktop editor** to close the monitor.
+5. On iPhone, start recording. The menus automatically disappear, leaving **Stop recording** and **Controls**. Tap Controls to bring them back, then Hide controls to clear them again. These buttons never enter the MP4.
+6. Each app can edit and record independently. Record the full-quality phone MP4 on iPhone; it saves to Photos. Record the Windows scene using its Record video button after closing Live Monitor. The Windows monitor does not save a second phone MP4 or remotely press the phone's recording button.
+7. Click **Stop sharing** on Windows (or Disconnect on iPhone) when finished. Starting pairing again creates a new code; old codes no longer connect.
+
+### Move scenes in either direction
+
+- **Windows → iPhone:** save any phone scene you need, click **Prepare scene for phone** on Windows, then tap **Load desktop scene** on iPhone. Return to the camera after loading.
+- **iPhone → Windows:** save any Windows scene you need, tap **Send scene to desktop** on iPhone, then click **Load received phone scene** on Windows.
+- Transfers replace the receiving scene. They include object presets, names, colors, position/rotation/scale, floor size and lens. They do not merge ongoing edits. Camera viewpoints, axis locks, local saves and recorded clips remain on their original device.
+- The apps use different rendering engines, so materials and basic preset shapes may look slightly different after transfer. Live Monitor shows the actual iPhone image.
+
+### Preview quality and connection help
+
+The monitor uses JPEG previews capped at 640 pixels on the long edge, targeting about 6 frames per second without audio. This is a framing monitor, not a full-quality video stream. Smoothness depends on phone performance and Wi-Fi. The native phone recording uses its separate MP4 recorder. Physical-device performance still needs testing.
+
+If pairing fails, check that both devices use the same network, that Windows permits the app on Private networks, and that iPhone Settings allows Local Network and Camera access. Guest Wi-Fi can block communication between devices. VPNs and multiple network adapters may require choosing the Wi-Fi address in Windows. If preview pauses, return to Camera mode on iPhone and keep it awake. Re-pair after restarting Windows sharing.
+
+The connection uses a random session token and direct local HTTP, with no cloud account or AI credits. It is not encrypted; use trusted private Wi-Fi and keep the pairing QR private. Internet access is not required for editing, recording or the local link.
+
+### Developer checks
+
+Run `node --test phone-link.test.cjs` for authorization, scene validation, JPEG handling, transfer and token rotation checks. Run `npm run build`, then `.\node_modules\electron\dist\electron.exe monitor-smoke.cjs` for the real Electron preload/IPC, QR pairing, received preview, recording indicator, monitor toggle and scene import checks. `smoke.cjs` tests the existing editor, axis locks, persistence and MP4 export. The phone simulator tests include pairing address validation and scene serialization. A simulated sender exercises Windows preview tests; a physical iPhone session is still pending.
 
