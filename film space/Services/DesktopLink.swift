@@ -58,7 +58,7 @@ final class DesktopLink {
     private var sending = false
     private var lastFrame: TimeInterval = 0
     private let redirectGuard = LocalRedirectGuard()
-    private lazy var session: URLSession = {
+    @ObservationIgnored private lazy var session: URLSession = {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 4
         config.httpMaximumConnectionsPerHost = 2
