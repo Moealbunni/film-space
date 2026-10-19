@@ -1,0 +1,43 @@
+name: Build Film Space iPhone app
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    permissions:
+      contents: read
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build for iPhone without a distribution certificate
+        run: |
+          xcodebuild \
+            -project "film space.xcodeproj" \
+            -scheme "film space" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath "$RUNNER_TEMP/film-space-build" \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package unsigned IPA for personal sideloading
+        run: |
+          set -euo pipefail
+          app="$RUNNER_TEMP/film-space-build/Build/Products/Release-iphoneos/film space.app"
+          test -d "$app"
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          ditto "$app" "$RUNNER_TEMP/ipa/Payload/film space.app"
+          cd "$RUNNER_TEMP/ipa"
+          zip -qry "$RUNNER_TEMP/FilmSpace-unsigned.ipa" Payload
+
+      - name: Upload iPhone app
+        uses: actions/upload-artifact@v4
+        with:
+          name: FilmSpace-unsigned-IPA
+          path: ${{ runner.temp }}/FilmSpace-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 7
