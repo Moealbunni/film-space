@@ -9,6 +9,7 @@ import simd
 
 @Observable
 final class OrbitCameraController {
+    var isViewLocked = false
     var azimuth: Float = 0.6
     var elevation: Float = 0.35
     var distance: Float = 6
@@ -25,12 +26,14 @@ final class OrbitCameraController {
     }
 
     func orbit(deltaAzimuth: Float, deltaElevation: Float) {
+        guard !isViewLocked else { return }
         azimuth += deltaAzimuth
         elevation = min(max(elevation + deltaElevation, -1.45), 1.45)
         updateCameraTransform()
     }
 
     func pan(deltaX: Float, deltaY: Float) {
+        guard !isViewLocked else { return }
         let cosA = cos(azimuth)
         let sinA = sin(azimuth)
         let right = SIMD3<Float>(cosA, 0, -sinA)
@@ -41,6 +44,7 @@ final class OrbitCameraController {
     }
 
     func zoom(scale: Float) {
+        guard !isViewLocked else { return }
         distance = min(max(distance / scale, 1.5), 20)
         updateCameraTransform()
     }
@@ -48,12 +52,14 @@ final class OrbitCameraController {
     /// Raises/lowers the whole framing along the world Y axis by moving the
     /// orbit center, detaching it from a fixed height.
     func moveVertically(by delta: Float) {
+        guard !isViewLocked else { return }
         target.y += delta
         updateCameraTransform()
     }
 
     /// Pans the orbit center left/right relative to the current view direction.
     func moveHorizontally(by delta: Float) {
+        guard !isViewLocked else { return }
         let right = SIMD3<Float>(cos(azimuth), 0, -sin(azimuth))
         target += right * delta
         updateCameraTransform()
@@ -62,6 +68,7 @@ final class OrbitCameraController {
     /// Dollies the whole rig forward/backward along the view direction
     /// (projected onto the ground plane).
     func moveForward(by delta: Float) {
+        guard !isViewLocked else { return }
         let forward = SIMD3<Float>(-sin(azimuth), 0, -cos(azimuth))
         target += forward * delta
         updateCameraTransform()

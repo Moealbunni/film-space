@@ -17,12 +17,19 @@ enum SceneEnvironment {
         let root = Entity()
         root.name = "StudioRoot"
 
-        addCheckerboard(to: root)
-        addGrid(to: root)
-        addAxes(to: root)
+        let ground = Entity(); ground.name = "Ground"
+        addCheckerboard(to: ground); root.addChild(ground)
+        let guides = Entity(); guides.name = "Guides"
+        addGrid(to: guides); addAxes(to: guides); root.addChild(guides)
         addLighting(to: root)
 
         return root
+    }
+
+    static func updateFloor(_ root: Entity, size: Float, showGuides: Bool) {
+        root.findEntity(named: "Ground")?.scale = [size/20, 1, size/20]
+        root.findEntity(named: "Guides")?.scale = [size/20, 1, size/20]
+        root.findEntity(named: "Guides")?.isEnabled = showGuides
     }
 
     private static func addCheckerboard(to root: Entity) {

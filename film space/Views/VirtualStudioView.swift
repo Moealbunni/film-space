@@ -21,6 +21,7 @@ struct VirtualStudioView: View {
         // humans are added/removed/selected.
         let humans = sceneState.humans
         let selectedID = sceneState.selectedHumanID
+        let floorSize = sceneState.floorSize
 
         RealityView { content in
             content.add(cameraController.makeCameraEntity())
@@ -29,6 +30,7 @@ struct VirtualStudioView: View {
             content.add(root)
             studioRoot = root
 
+            SceneEnvironment.updateFloor(root, size: floorSize, showGuides: true)
             SceneContentBuilder.syncHumans(
                 placements: humans,
                 selectedID: selectedID,
@@ -36,6 +38,7 @@ struct VirtualStudioView: View {
             )
         } update: { _ in
             guard let root = studioRoot else { return }
+            SceneEnvironment.updateFloor(root, size: floorSize, showGuides: true)
             SceneContentBuilder.syncHumans(
                 placements: humans,
                 selectedID: selectedID,
@@ -73,11 +76,11 @@ struct VirtualStudioView: View {
                     offset += forward * Float(value.translation.height) * moveScale
 
                     var newPosition = start + offset
-                    newPosition.y = 0
+                    newPosition.y = start.y
                     sceneState.updateHumanPosition(id: id, position: newPosition)
                 } else {
-                    let deltaAzimuth = Float(delta.width) * 0.005
-                    let deltaElevation = Float(delta.height) * 0.005
+                    let deltaAzimuth = Float(delta.width) * 0.005 * sceneState.touchSensitivity
+                    let deltaElevation = Float(delta.height) * 0.005 * sceneState.touchSensitivity
                     cameraController.orbit(deltaAzimuth: deltaAzimuth, deltaElevation: -deltaElevation)
                 }
             }

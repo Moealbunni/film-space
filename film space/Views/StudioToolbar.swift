@@ -80,7 +80,7 @@ struct StudioToolbar: View {
                         }
                     }
 
-                    circleButton(systemName: "lock.fill") {
+                    circleButton(systemName: cameraController.isViewLocked ? "lock.open.fill" : "lock.fill") {
                         lockCamera()
                     }
                 }
@@ -105,16 +105,18 @@ struct StudioToolbar: View {
                 sceneState.rotateSelectedHuman(by: rotateDirection * rotationSpeed)
             }
             if verticalDirection != 0 {
-                cameraController.moveVertically(by: verticalDirection * verticalSpeed)
+                cameraController.moveVertically(by: verticalDirection * verticalSpeed * sceneState.movementScale)
             }
             if joystick != .zero {
-                cameraController.moveHorizontally(by: Float(joystick.width) * joystickSpeed)
-                cameraController.moveForward(by: Float(-joystick.height) * joystickSpeed)
+                cameraController.moveHorizontally(by: Float(joystick.width) * joystickSpeed * sceneState.movementScale)
+                cameraController.moveForward(by: Float(-joystick.height) * joystickSpeed * sceneState.movementScale)
             }
         }
     }
 
     private func lockCamera() {
+        if cameraController.isViewLocked { cameraController.isViewLocked = false; return }
+        cameraController.isViewLocked = true
         if sceneState.mode == .camera, let live = cameraController.liveCameraTransform {
             cameraController.lockedTransform = live
         } else {
@@ -178,6 +180,7 @@ struct StudioToolbar: View {
         HStack(spacing: 4) {
             ForEach(AppMode.allCases, id: \.self) { mode in
                 Button {
+                    sceneState.isRecording = false
                     sceneState.mode = mode
                 } label: {
                     Text(mode.rawValue)

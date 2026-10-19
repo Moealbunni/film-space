@@ -222,8 +222,8 @@ private final class MediaWriter: @unchecked Sendable {
         let height = max(2, Int((Double(sourceHeight) * scale).rounded())) & ~1
 
         let outputURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("film-space-\(UUID().uuidString).mov")
-        guard let writer = try? AVAssetWriter(url: outputURL, fileType: .mov) else { return }
+            .appendingPathComponent("film-space-\(UUID().uuidString).mp4")
+        guard let writer = try? AVAssetWriter(url: outputURL, fileType: .mp4) else { return }
 
         let videoSettings: [String: Any] = [
             AVVideoCodecKey: AVVideoCodecType.h264,

@@ -86,8 +86,9 @@ struct ARCameraView: UIViewRepresentable {
         func rebuildScene() {
             guard let root = studioRoot else { return }
 
+            SceneEnvironment.updateFloor(root, size: sceneState.floorSize, showGuides: false)
             let signature = sceneState.humans
-                .map { "\($0.id)-\($0.position)-\($0.rotationY)" }
+                .map { "\($0)" }
                 .joined(separator: "|")
             guard signature != lastHumanSignature else { return }
             lastHumanSignature = signature
@@ -101,7 +102,14 @@ struct ARCameraView: UIViewRepresentable {
 
         nonisolated func session(_ session: ARSession, didUpdate frame: ARFrame) {
             let deviceTransform = frame.camera.transform
+            let trackingMessage: String
+            switch frame.camera.trackingState {
+            case .normal: trackingMessage = "Tracking ready"
+            case .notAvailable: trackingMessage = "Tracking unavailable"
+            case .limited: trackingMessage = "Move slowly in a well-lit room with visible detail"
+            }
             Task { @MainActor in
+                self.sceneState.trackingStatus = trackingMessage
                 self.applyDeviceMotion(deviceTransform)
             }
         }
@@ -136,6 +144,12 @@ struct ARCameraView: UIViewRepresentable {
             }
             guard let reference = referenceTransform, let camera = cameraEntity else { return }
 
+            if cameraController.isViewLocked, let locked = cameraController.lockedTransform {
+                camera.transform = Transform(matrix: locked)
+                editCameraTransform = locked; referenceTransform = deviceTransform
+                cameraController.liveCameraTransform = locked
+                applyFocalLengthIfNeeded(); syncRecording(); return
+            }
             let edit = editCameraTransform
 
             // Orientation: start at the edit-mode look direction, then apply the
@@ -149,7 +163,7 @@ struct ARCameraView: UIViewRepresentable {
             // heads toward the scene from the edit-mode viewpoint.
             let worldDelta = translation(deviceTransform) - translation(reference)
             let yawAlign = simd_quatf(angle: yaw(of: edit) - yaw(of: reference), axis: [0, 1, 0])
-            let newPosition = translation(edit) + yawAlign.act(worldDelta)
+            let newPosition = translation(edit) + yawAlign.act(worldDelta) * sceneState.movementScale
 
             camera.transform = Transform(scale: .one, rotation: newRotation, translation: newPosition)
             cameraController.liveCameraTransform = camera.transform.matrix
