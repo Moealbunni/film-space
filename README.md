@@ -84,7 +84,7 @@ Landscape orientation is recommended for the bottom toolbar.
 
 ## Verification and remaining limits
 
-The 1.2 release adds local pairing, scene transfers and recording-menu auto-hide. Build and simulator verification are recorded in GitHub Actions. Real-device ARKit tracking, Wi-Fi preview performance, Photos/audio behavior and touch usability remain pending; physical iPhone installation is deferred. No Android or Mac package is included.
+The 1.2 release adds local pairing, scene transfers and recording-menu auto-hide. The device build and both simulator tests passed in [run 39284353578](https://github.com/Moealbunni/film-space/actions/runs/39284353578), at source commit `80698fed6c3c09a97009dcecb4b19fc269ac4b8a`. The IPA archive was checked as version 1.2, build 3, minimum iOS 18, with the Local Network permission description. Real-device ARKit tracking, Wi-Fi preview performance, Photos/audio behavior and touch usability remain pending; physical iPhone installation is deferred. No Android or Mac package is included.
 
 
 ## Axis locks, resets, and direct controls
