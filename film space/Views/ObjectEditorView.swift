@@ -14,7 +14,7 @@ struct ObjectEditorView: View {
                         }
                     }
                 }
-                Section("Objects — tap to select") {
+                Section("Objects â€” tap to select") {
                     ForEach(sceneState.humans) { object in
                         Button { sceneState.selectedHumanID = object.id } label: {
                             HStack {
@@ -48,12 +48,12 @@ struct ObjectEditorView: View {
                         Button("Duplicate") { sceneState.duplicateSelected() }
                         Button("Delete object", role: .destructive) { sceneState.deleteSelectedHuman() }
                     }
-                    Section("Position in meters — Y is height") {
+                    Section("Position in meters â€” Y is height") {
                         vectorControl("X", vector: \.position, axis: 0, range: -50...50)
                         vectorControl("Y", vector: \.position, axis: 1, range: -10...50)
                         vectorControl("Z", vector: \.position, axis: 2, range: -50...50)
                     }
-                    Section("Size — 1 is original size") {
+                    Section("Size â€” 1 is original size") {
                         vectorControl("Width", vector: \.scale, axis: 0, range: 0.05...20)
                         vectorControl("Height", vector: \.scale, axis: 1, range: 0.05...20)
                         vectorControl("Depth", vector: \.scale, axis: 2, range: 0.05...20)
@@ -68,9 +68,9 @@ struct ObjectEditorView: View {
                     Slider(value: $sceneState.floorSize, in: 2...200, step: 1) { Text("Floor size") }
                     Text("Floor: \(Int(sceneState.floorSize)) meters")
                     Slider(value: $sceneState.movementScale, in: 0.1...3, step: 0.1) { Text("Camera movement scale") }
-                    Text("Phone movement: \(sceneState.movementScale, specifier: "%.1f")× — use 0.1–0.5× for slow moves")
+                    Text("Phone movement: \(sceneState.movementScale, specifier: "%.1f")Ã— â€” use 0.1â€“0.5Ã— for slow moves")
                     Slider(value: $sceneState.touchSensitivity, in: 0.1...3, step: 0.1) { Text("Touch sensitivity") }
-                    Text("Touch sensitivity: \(sceneState.touchSensitivity, specifier: "%.1f")×")
+                    Text("Touch sensitivity: \(sceneState.touchSensitivity, specifier: "%.1f")Ã—")
                     Picker("Lens", selection: $sceneState.focalLength) { ForEach(FocalLength.allCases, id: \.self) { Text($0.label).tag($0) } }
                 }
                 Section("Save on this iPhone") {
@@ -92,6 +92,6 @@ struct ObjectEditorView: View {
     }
     private func rotationControl(_ label: String, key: WritableKeyPath<HumanPlacement, Float>) -> some View {
         let binding = Binding<Float>(get: { (sceneState.selectedHuman?[keyPath: key] ?? 0) * 180 / .pi }, set: { value in sceneState.editSelected { $0[keyPath: key] = value * .pi / 180 } })
-        return HStack { Text(label); Slider(value: binding, in: -180...180, step: 5); Text("\(Int(binding.wrappedValue))°").frame(width: 50) }
+        return HStack { Text(label); Slider(value: binding, in: -180...180, step: 5); Text("\(Int(binding.wrappedValue))Â°").frame(width: 50) }
     }
 }
