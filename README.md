@@ -7,7 +7,7 @@ A local virtual studio: arrange colored 3D reference objects, then move your iPh
 ## Downloads
 
 - [iPhone 1.3.1 release and unsigned IPA](https://github.com/Moealbunni/film-space/releases/tag/iphone-v1.3.1)
-- [Windows 0.4.2 app and source](https://github.com/Moealbunni/film-space-universal/releases/tag/v0.4.2)
+- [Windows 0.4.3 app and source](https://github.com/Moealbunni/film-space-universal/releases/tag/v0.4.3)
 - [Build workflow and downloadable artifacts](https://github.com/Moealbunni/film-space/actions/workflows/build-ipa.yml)
 
 **An unsigned IPA needs signing before installation. It is not an App Store or TestFlight download.** iOS 18 or later and an ARKit-capable iPhone are required. Both apps can edit and record independently, transfer scenes over local Wi-Fi, and show the iPhone camera view on Windows.
@@ -182,3 +182,30 @@ The QR scanner now stops camera capture before returning a scanned code. Its sta
 Physical iPhone tracking, camera handoff and end-to-end Wi-Fi preview must be checked on the device after this update; simulator checks cannot prove those behaviors.
 
 Build verification: the native iPhone build, four unit tests and the UI test passed in [run 39401878004](https://github.com/Moealbunni/film-space/actions/runs/39401878004), source `5a2141b3927b4d911a21febd9f351d3e9178150d`. IPA archive verified as version 1.3.1, build 5, minimum iOS 18. Physical QR-to-AR handoff and Wi-Fi preview still require a real-device check.
+
+## Edit a scene on either device and send it back
+
+Keep both apps paired on the same Wi-Fi. Scene transfer is an explicit copy of the scene at the moment you send/prepare it; it does not continuously synchronize edits. Save the receiving device's current scene first if you need to keep it, because loading a transferred scene replaces it.
+
+### Windows → iPhone → Windows
+
+1. Build or edit your scene on Windows. In Connect iPhone, press **Prepare scene for phone** each time you want to send your latest changes.
+2. On iPhone open **Menu → Desktop link → Load desktop scene — replaces current scene**. Tap Done. The phone enters Edit mode.
+3. Select objects, change colors/sizes/positions/rotations, add/delete objects, or change the floor size. **Menu → Objects & scene → Save scene** keeps the current scene locally on your phone.
+4. On iPhone tap **Menu → Desktop link → Send scene to desktop**.
+5. On Windows press **Load received phone scene**. Windows 0.4.3 closes Live Monitor and opens Edit mode automatically. Select objects and continue editing.
+6. Press **Prepare scene for phone** again, then load the desktop scene on the phone to continue there.
+
+### Start on iPhone
+
+Build the scene in phone Edit mode, then follow steps 4–6. There is no requirement to create the scene on Windows first.
+
+### Save versus transfer
+
+- **Phone Save scene / Load saved scene:** saves or loads the phone's one local scene slot.
+- **Windows Save scene / Load scene:** saves or loads the Windows local scene slot. Export scene makes a separate JSON file for keeping multiple Windows scenes.
+- **Send scene to desktop / Prepare scene for phone:** makes a transferable snapshot. The receiving device must load it.
+- Transfers include all 12 supported shapes, names, colors, position, rotation, size, floor size and base lens. The receiving scene remains editable.
+- Viewpoints, camera/object locks, phone zoom multiplier/smoothing, saved files and recorded videos are not transferred. Basic shapes can look different between the two rendering engines.
+
+Verification: the Windows protocol integration check round-tripped all 12 object types with names/colors/transforms/floor/lens, then edited a received object, saved/loaded locally and sent the changes back. The iPhone scene serialization/application checks passed in the existing 1.3.1 build. This is automated/protocol evidence, not a new physical-device transfer session. The working iPhone 1.3.1 binary is unchanged.
