@@ -180,3 +180,5 @@ The QR scanner now stops camera capture before returning a scanned code. Its sta
 6. If no image arrives, the phone's Desktop link panel now reports whether preview uploads reach Windows or fail. A successful pairing heartbeat alone does not prove image delivery.
 
 Physical iPhone tracking, camera handoff and end-to-end Wi-Fi preview must be checked on the device after this update; simulator checks cannot prove those behaviors.
+
+Build verification: the native iPhone build, four unit tests and the UI test passed in [run 39401878004](https://github.com/Moealbunni/film-space/actions/runs/39401878004), source `5a2141b3927b4d911a21febd9f351d3e9178150d`. IPA archive verified as version 1.3.1, build 5, minimum iOS 18. Physical QR-to-AR handoff and Wi-Fi preview still require a real-device check.
