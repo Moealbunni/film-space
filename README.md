@@ -1,4 +1,4 @@
-# Film Space for iPhone — personal editor edition 1.3
+# Film Space for iPhone — personal editor edition 1.3.1
 
 Based on [Max Prokopp's Film Space](https://github.com/maxprokopp/film-space). Original project description and attribution are preserved in [UPSTREAM-README.md](UPSTREAM-README.md).
 
@@ -6,8 +6,8 @@ A local virtual studio: arrange colored 3D reference objects, then move your iPh
 
 ## Downloads
 
-- [iPhone 1.3 release and unsigned IPA](https://github.com/Moealbunni/film-space/releases/tag/iphone-v1.3.0)
-- [Windows 0.4.1 app and source](https://github.com/Moealbunni/film-space-universal/releases/tag/v0.4.1)
+- [iPhone 1.3.1 release and unsigned IPA](https://github.com/Moealbunni/film-space/releases/tag/iphone-v1.3.1)
+- [Windows 0.4.2 app and source](https://github.com/Moealbunni/film-space-universal/releases/tag/v0.4.2)
 - [Build workflow and downloadable artifacts](https://github.com/Moealbunni/film-space/actions/workflows/build-ipa.yml)
 
 **An unsigned IPA needs signing before installation. It is not an App Store or TestFlight download.** iOS 18 or later and an ARKit-capable iPhone are required. Both apps can edit and record independently, transfer scenes over local Wi-Fi, and show the iPhone camera view on Windows.
@@ -163,3 +163,20 @@ Edit and Camera now share one persistent ARView and tracking session, avoiding r
 The MP4 recorder requests **60 fps**, H.264 and a 12 Mbps encoding bitrate, with the existing maximum image dimension of 1280 pixels. Actual captured frame rate can fall below 60 when the device cannot render/capture/encode fast enough; this update does not guarantee sustained 60 fps on every iPhone. The Windows monitor remains a lower-resolution preview at about 6 fps. Real-device performance verification is separate from compilation and simulator tests.
 
 Windows 0.4.1 also requests 60 fps recording and exports camera paths with a 60 fps timeline. Its live iPhone monitor remains a lightweight preview at about 6 fps.
+
+## iPhone 1.3.1 — pairing, preview and frozen tracking
+
+Pairing only confirms the connection; it previously did not switch Windows into its phone monitor. Scanning the QR also switched iPhone into Edit, while previews were restricted to Camera. This update streams the visible scene in both modes and adds **Desktop link → Show live view on Windows** to enter Camera and open the Windows monitor (requires Windows 0.4.2).
+
+The QR scanner now stops camera capture before returning a scanned code. Its start and stop operations use one serial queue. AR tracking restarts after scanning and after a tracking interruption ends. **Controls → Restart tracking** retries physical tracking while preserving the virtual camera position and existing locks. Active locks have a visible reminder; use Unlock viewpoint or Axis locks / Reset if you want movement on those axes.
+
+### Connect and check
+
+1. Close the previous Windows app and run Windows 0.4.2. Install iPhone 1.3.1 over the current app with the same Sideloadly signing account.
+2. Start pairing on Windows and scan the new QR in the phone's Desktop link menu.
+3. Tap **Show live view on Windows** on the phone. Its menu closes and the Windows monitor opens. You can also press Live Monitor on Windows manually.
+4. Move the phone and check the phone's own scene first. If it stays still, tap Controls → Restart tracking and check that viewpoint/axis locks are not preventing motion. Keep the camera unobstructed in a well-lit room with visible detail.
+5. Windows should mirror that phone scene. Back to desktop editor returns to the separate Windows scene. Loading/transferring scenes and monitoring the phone are different actions.
+6. If no image arrives, the phone's Desktop link panel now reports whether preview uploads reach Windows or fail. A successful pairing heartbeat alone does not prove image delivery.
+
+Physical iPhone tracking, camera handoff and end-to-end Wi-Fi preview must be checked on the device after this update; simulator checks cannot prove those behaviors.
