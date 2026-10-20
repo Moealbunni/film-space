@@ -20,6 +20,7 @@ final class SceneRecorder: NSObject {
     private let writer = MediaWriter()
     private var displayLink: CADisplayLink?
     private var capturing = false
+    private var captureGeneration = UUID()
 
     private let captureSession = AVCaptureSession()
     private let audioOutput = AVCaptureAudioDataOutput()
@@ -29,6 +30,7 @@ final class SceneRecorder: NSObject {
     func start(arView: ARView) {
         guard !isRecording else { return }
         self.arView = arView
+        captureGeneration = UUID(); capturing = false
         isRecording = true
 
         let scale = arView.contentScaleFactor
@@ -48,6 +50,7 @@ final class SceneRecorder: NSObject {
     func stop() {
         guard isRecording else { return }
         isRecording = false
+        captureGeneration = UUID(); capturing = false
         displayLink?.invalidate()
         displayLink = nil
         stopAudio()
@@ -62,9 +65,10 @@ final class SceneRecorder: NSObject {
     @objc private func captureFrame() {
         guard isRecording, !capturing, let arView else { return }
         capturing = true
+        let generation = captureGeneration
         arView.snapshot(saveToHDR: false) { [weak self] image in
             Task { @MainActor in
-                guard let self else { return }
+                guard let self, self.captureGeneration == generation else { return }
                 self.capturing = false
                 guard self.isRecording, let cgImage = image?.cgImage else { return }
                 self.writer.appendVideo(cgImage, hostTimeSeconds: CACurrentMediaTime())
@@ -132,7 +136,7 @@ extension SceneRecorder: AVCaptureAudioDataOutputSampleBufferDelegate {
 // Owns the AVAssetWriter and does all encoding on its own serial queue so the
 // main thread (and the RealityKit render loop) stay responsive. Video frames
 // and audio samples share the host-time clock so they stay in sync.
-private final class MediaWriter: @unchecked Sendable {
+final class MediaWriter: @unchecked Sendable {
     private let queue = DispatchQueue(label: "com.filmspace.mediawriter")
     private let maxLongSide = 1280
     private let videoSlot = DispatchSemaphore(value: 1)
@@ -198,6 +202,11 @@ private final class MediaWriter: @unchecked Sendable {
             guard audioInput.isReadyForMoreMediaData else { return }
             audioInput.append(sampleBuffer)
         }
+    }
+
+    // Allows callers to wait for queued work without blocking the main thread.
+    func drain() async {
+        await withCheckedContinuation { continuation in queue.async { continuation.resume() } }
     }
 
     func finish(completion: @escaping (URL?) -> Void) {

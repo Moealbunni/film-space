@@ -1,4 +1,4 @@
-# Film Space for iPhone — personal editor edition 1.2
+# Film Space for iPhone — personal editor edition 1.3
 
 Based on [Max Prokopp's Film Space](https://github.com/maxprokopp/film-space). Original project description and attribution are preserved in [UPSTREAM-README.md](UPSTREAM-README.md).
 
@@ -6,7 +6,7 @@ A local virtual studio: arrange colored 3D reference objects, then move your iPh
 
 ## Downloads
 
-- [iPhone 1.2 release and unsigned IPA](https://github.com/Moealbunni/film-space/releases/tag/iphone-v1.2.0)
+- [iPhone 1.3 release and unsigned IPA](https://github.com/Moealbunni/film-space/releases/tag/iphone-v1.3.0)
 - [Windows 0.4 app and source](https://github.com/Moealbunni/film-space-universal/releases/tag/v0.4.0)
 - [Build workflow and downloadable artifacts](https://github.com/Moealbunni/film-space/actions/workflows/build-ipa.yml)
 
@@ -28,7 +28,7 @@ Sideloadly supports free Apple accounts; free signing lasts seven days, with aut
 
 Landscape orientation is recommended for the bottom toolbar.
 
-1. Choose **Edit**, then tap **Objects & scene** at the top.
+1. Choose **Edit**, then tap **Menu → Objects & scene** (or Add / edit objects in the side panel).
 2. Tap a preset: Person, Child, Car, Bike, Box, Sphere, Wall, Cylinder, Cone, Circle, Plane, or Torus. Cars and bikes are simple blocking shapes, and the ring uses rounded segments.
 3. Tap an object's name in the list to select it. Change its name to identify its role, such as “Red actor”, “Yellow car”, or “Cat reference”. Naming a shape does not generate a detailed model.
 4. Pick any color or use the red, blue, green, and yellow shortcuts.
@@ -102,9 +102,9 @@ The 1.2 release adds local pairing, scene transfers and recording-menu auto-hide
 
 ## Connect iPhone and Windows on Wi-Fi
 
-1. Install Windows **0.4.0** and iPhone **1.2**. Put both devices on the same private Wi-Fi network and keep both apps open.
+1. Install Windows **0.4.0** and iPhone **1.3**. Put both devices on the same private Wi-Fi network and keep both apps open.
 2. On Windows, expand **Connect iPhone**, then click **Start pairing**. If Windows asks, allow Film Space on **Private networks**. A QR code appears. If multiple addresses appear, choose your Wi-Fi adapter's address.
-3. On iPhone, tap **Desktop link → Scan desktop QR**. Scan the code displayed on Windows and allow **Local Network** access. You can also paste the pairing address and tap Connect.
+3. On iPhone, tap **Menu → Desktop link → Scan desktop QR**. Scan the code displayed on Windows and allow **Local Network** access. You can also paste the pairing address and tap Connect.
 4. Tap **Done**, then choose **Camera** on iPhone. On Windows, click **Live Monitor**. You see the actual rendered iPhone camera view, plus its recording status. Click **Back to desktop editor** to close the monitor.
 5. On iPhone, start recording. The menus automatically disappear, leaving **Stop recording** and **Controls**. Tap Controls to bring them back, then Hide controls to clear them again. These buttons never enter the MP4.
 6. Each app can edit and record independently. Record the full-quality phone MP4 on iPhone; it saves to Photos. Record the Windows scene using its Record video button after closing Live Monitor. The Windows monitor does not save a second phone MP4 or remotely press the phone's recording button.
@@ -129,3 +129,33 @@ The connection uses a random session token and direct local HTTP, with no cloud 
 
 Run `node --test phone-link.test.cjs` for authorization, scene validation, JPEG handling, transfer and token rotation checks. Run `npm run build`, then `.\node_modules\electron\dist\electron.exe monitor-smoke.cjs` for the real Electron preload/IPC, QR pairing, received preview, recording indicator, monitor toggle and scene import checks. `smoke.cjs` tests the existing editor, axis locks, persistence and MP4 export. The phone simulator tests include pairing address validation and scene serialization. A simulated sender exercises Windows preview tests; a physical iPhone session is still pending.
 
+
+## iPhone 1.3: smooth camera and recording controls
+
+### Update the installed app
+
+Download the new unsigned IPA from the 1.3 release. In Sideloadly, select your connected iPhone, use the same Apple ID as before, load the new IPA, and install over the existing Film Space app. Do not delete the existing app first if you want to keep its local saved scene. The Windows 0.4.0 Live Monitor remains compatible.
+
+### Find everything without clipped menus
+
+The top bar contains Menu, Edit, Camera, Controls/Hide controls and Record/Stop. The bar can scroll horizontally if the screen is narrow. Menu opens Objects & scene, Camera axis locks & reset, Desktop link or Save scene. The right-hand panel scrolls inside the screen rather than growing beyond it. Controls hide automatically when recording starts; tap Controls to bring the side panel back during the take. All interface elements remain outside the exported video.
+
+### Zoom while editing, standing still or recording
+
+- Pinch the scene with two fingers in either mode.
+- Drag the Smooth zoom slider between 0.5× and 4× relative to the selected lens.
+- Tap + Zoom / − Zoom for a small eased change. Hold a button for continuous zoom.
+- Tap a 0.5× / 1× / 2× / 4× preset to ease toward that zoom.
+- Lens / zoom lock disables these inputs. Zoom changes the virtual lens; it does not require walking or change the real phone camera's optical lens.
+
+### Move with the joystick and your phone together
+
+The same round joystick is available in Edit and Camera mode. In Camera mode it moves the virtual camera while ARKit continues to track your physical position and orientation. Up / Down raises or lowers it. Camera smoothing eases starts, stops and small tracking changes. Higher values feel softer but introduce more lag; zero follows the input directly. Side-panel movement stops when the panel closes.
+
+Movement scales physical travel from 0.1× to 10× and also adjusts joystick speed. For your 4 m room / 10 m virtual travel example, use **2.5×**: 1 m walked becomes 2.5 m in the scene. The 1×, 2.5×, 5× and 10× buttons provide quick presets. Changing this value rebases at the current viewpoint to avoid a jump. This setting expands virtual travel, not your physical safe walking space. Zoom and smoothing are stored with the local scene save; the current desktop transfer format keeps these phone-specific controls local.
+
+### Performance and 60 fps recording
+
+Edit and Camera now share one persistent ARView and tracking session, avoiding renderer destruction and tracking reset on every mode switch. Shape templates are reused; color changes update existing materials, and primitive selection uses simple bounding shapes rather than repeated mesh collision generation. The checkerboard uses one mesh instead of 200 tile entities. During recording, the Wi-Fi preview reuses captured frames instead of taking additional snapshots. The encoder queue is bounded to avoid accumulating frames when the device is busy.
+
+The MP4 recorder requests **60 fps**, H.264 and a 12 Mbps encoding bitrate, with the existing maximum image dimension of 1280 pixels. Actual captured frame rate can fall below 60 when the device cannot render/capture/encode fast enough; this update does not guarantee sustained 60 fps on every iPhone. The Windows monitor remains a lower-resolution preview at about 6 fps. Real-device performance verification is separate from compilation and simulator tests.

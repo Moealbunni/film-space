@@ -1,6 +1,8 @@
 import Testing
 import Foundation
 import RealityKit
+import AVFoundation
+import UIKit
 @testable import film_space
 
 struct film_spaceTests {
@@ -100,5 +102,29 @@ struct film_spaceTests {
         state.saveScene(); state.zoomMultiplier = 1; state.movementScale = 1; state.loadScene()
         #expect(state.zoomMultiplier == 2.5 && state.movementScale == 10)
         #expect(state.cameraSmoothing == 0.7)
+    }
+    @Test @MainActor func movieEncodesSixtyFramesPerSecond() async throws {
+        let writer = MediaWriter()
+        writer.prepare(sourceWidth: 320, sourceHeight: 180)
+        await writer.drain()
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 320, height: 180)).image { context in
+            UIColor.red.setFill(); context.fill(CGRect(x: 0, y: 0, width: 320, height: 180))
+        }.cgImage!
+        for frame in 0..<60 {
+            writer.appendVideo(image, hostTimeSeconds: 10 + Double(frame)/60)
+            await writer.drain()
+        }
+        let result: URL? = await withCheckedContinuation { continuation in
+            writer.finish { continuation.resume(returning: $0) }
+        }
+        let url = try #require(result)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let asset = AVURLAsset(url: url)
+        let tracks = try await asset.loadTracks(withMediaType: .video)
+        let track = try #require(tracks.first)
+        let fps = try await track.load(.nominalFrameRate)
+        #expect(fps >= 59 && fps <= 61)
+        let duration = try await asset.load(.duration)
+        #expect(duration.seconds > 0.95 && duration.seconds < 1.1)
     }
 }
