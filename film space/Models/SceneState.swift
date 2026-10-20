@@ -70,6 +70,7 @@ final class SceneState {
     var zoomMultiplier: Float = 1
     var cameraSmoothing: Float = 0.35
     var trackingSuspended = false
+    var trackingRestartID = UUID()
     var isRecording = false
     var floorSize: Float = 20
     var movementScale: Float = 1

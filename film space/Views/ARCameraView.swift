@@ -52,6 +52,7 @@ struct ARCameraView: UIViewRepresentable {
         private var displayLink: CADisplayLink?
         private var lastTick: TimeInterval = 0
         private var trackingStarted = false
+        private var lastTrackingRestartID: UUID?
         private var trackingPaused = false
         private var lastMovementScale: Float = 1
         private var virtualOffset: SIMD3<Float> = .zero
@@ -108,6 +109,32 @@ struct ARCameraView: UIViewRepresentable {
             config.planeDetection = []
             config.environmentTexturing = .none
             trackingSession.run(config, options: [.resetTracking, .removeExistingAnchors])
+        }
+
+        private func restartTracking() {
+            guard ARWorldTrackingConfiguration.isSupported else {
+                sceneState.trackingStatus = "Physical tracking is unavailable on this device"
+                return
+            }
+            editCameraTransform = cameraEntity?.transform.matrix ?? editCameraTransform
+            referenceTransform = nil; latestDevice = nil
+            virtualOffset = .zero; filteredPose = nil
+            trackingSession.delegate = self
+            trackingSession.pause()
+            trackingSession.run(ARWorldTrackingConfiguration(), options: [.resetTracking, .removeExistingAnchors])
+            trackingStarted = true; trackingPaused = false
+            sceneState.trackingStatus = "Restarting tracking — move slowly"
+        }
+
+        nonisolated func session(_ session: ARSession, didFailWithError error: Error) {
+            let message = error.localizedDescription
+            Task { @MainActor in self.sceneState.trackingStatus = "Tracking stopped: " + message + ". Tap Restart tracking." }
+        }
+        nonisolated func sessionWasInterrupted(_ session: ARSession) {
+            Task { @MainActor in self.sceneState.trackingStatus = "Tracking interrupted — waiting for camera access" }
+        }
+        nonisolated func sessionInterruptionEnded(_ session: ARSession) {
+            Task { @MainActor in self.sceneState.trackingRestartID = UUID() }
         }
 
         func rebuildScene() {
@@ -251,6 +278,10 @@ struct ARCameraView: UIViewRepresentable {
                 syncRecording()
                 if !trackingPaused { trackingSession.pause(); trackingPaused = true }
                 return
+            }
+            if sceneState.mode == .camera, lastTrackingRestartID != sceneState.trackingRestartID {
+                lastTrackingRestartID = sceneState.trackingRestartID
+                restartTracking()
             }
             if trackingPaused {
                 trackingPaused = false

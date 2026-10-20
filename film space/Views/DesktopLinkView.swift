@@ -25,6 +25,7 @@ struct DesktopLinkView: View {
                 Section("Live monitor") {
                     Button("Show live view on Windows") {
                         state.trackingSuspended = false
+                        state.trackingRestartID = UUID()
                         state.mode = .camera
                         Task { await state.desktopLink.showMonitor() }
                         dismiss()
@@ -36,7 +37,7 @@ struct DesktopLinkView: View {
                 }
             }.navigationTitle("Desktop link")
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { state.trackingSuspended = false; dismiss() } } }
-                .sheet(isPresented: $scanning, onDismiss: { state.trackingSuspended = false }) { QRScanner { result in text = result; scanning = false; Task { await state.desktopLink.connect(result) } } }
+                .sheet(isPresented: $scanning, onDismiss: { state.trackingSuspended = false; state.trackingRestartID = UUID() }) { QRScanner { result in text = result; scanning = false; Task { await state.desktopLink.connect(result) } } }
         }
     }
 }
@@ -47,7 +48,7 @@ struct QRScanner: UIViewRepresentable {
         let view = Preview(); context.coordinator.authorize(view); return view
     }
     func updateUIView(_ uiView: Preview, context: Context) {}
-    static func dismantleUIView(_ uiView: Preview, coordinator: Coordinator) { coordinator.session.stopRunning() }
+    static func dismantleUIView(_ uiView: Preview, coordinator: Coordinator) { coordinator.stop() }
     final class Preview: UIView {
         override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
     }
@@ -55,12 +56,19 @@ struct QRScanner: UIViewRepresentable {
         let session = AVCaptureSession()
         let onCode: (String) -> Void
         var delivered = false
+        var stopped = false
+        private let captureQueue = DispatchQueue(label: "film-space.qr-camera")
+        func stop() {
+            stopped = true
+            let capture = session
+            captureQueue.async { capture.stopRunning() }
+        }
         init(onCode: @escaping (String) -> Void) { self.onCode = onCode }
         func authorize(_ view: Preview) {
             AVCaptureDevice.requestAccess(for: .video) { [weak self, weak view] allowed in
                 Task { @MainActor in
                     guard let self, let view else { return }
-                    if allowed { self.setup(view) } else {
+                    if allowed, !self.stopped { self.setup(view) } else {
                         let label = UILabel(); label.text = "Allow Camera in iPhone Settings, or swipe down and paste the pairing address."; label.numberOfLines = 0; label.textColor = .white; label.frame = CGRect(x: 24, y: 50, width: 280, height: 160); view.addSubview(label)
                     }
                 }
@@ -74,12 +82,21 @@ struct QRScanner: UIViewRepresentable {
             session.addOutput(output); output.setMetadataObjectsDelegate(self, queue: .main); output.metadataObjectTypes = [.qr]
             let layer = view.layer as! AVCaptureVideoPreviewLayer; layer.session = session; layer.videoGravity = .resizeAspectFill
             let capture = session
-            DispatchQueue.global(qos: .userInitiated).async { capture.startRunning() }
+            captureQueue.async { capture.startRunning() }
         }
         nonisolated func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput objects: [AVMetadataObject], from connection: AVCaptureConnection) {
             guard let text = (objects.first as? AVMetadataMachineReadableCodeObject)?.stringValue else { return }
             Task { @MainActor in
-                guard !self.delivered else { return }; self.delivered = true; self.onCode(text)
+                guard !self.delivered, !self.stopped else { return }
+                self.delivered = true
+                let capture = self.session
+                self.captureQueue.async {
+                    capture.stopRunning()
+                    Task { @MainActor in
+                        guard !self.stopped else { return }
+                        self.onCode(text)
+                    }
+                }
             }
         }
     }

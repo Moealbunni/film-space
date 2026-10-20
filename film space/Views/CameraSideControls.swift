@@ -38,6 +38,12 @@ struct CameraSideControls: View {
                 else { camera.lockedTransform = state.mode == .camera ? (camera.liveCameraTransform ?? camera.worldTransform) : camera.worldTransform; camera.isViewLocked = true }
             }
             Button("Axis locks / Reset", action: openAxes)
+            if state.mode == .camera {
+                Button("Restart tracking") { state.trackingRestartID = UUID() }
+                if camera.isViewLocked || camera.positionLocks.contains(true) || camera.rotationLocks.contains(true) {
+                    Text("Camera locks are active. Unlock viewpoint or axes to allow movement.").font(.caption2)
+                }
+            }
             Menu("Lens / saved view") {
                 Picker("Lens", selection: $state.focalLength) {
                     ForEach(FocalLength.allCases, id: \.self) { Text($0.label).tag($0) }
