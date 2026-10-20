@@ -7,7 +7,7 @@ A local virtual studio: arrange colored 3D reference objects, then move your iPh
 ## Downloads
 
 - [iPhone 1.3 release and unsigned IPA](https://github.com/Moealbunni/film-space/releases/tag/iphone-v1.3.0)
-- [Windows 0.4 app and source](https://github.com/Moealbunni/film-space-universal/releases/tag/v0.4.0)
+- [Windows 0.4.1 app and source](https://github.com/Moealbunni/film-space-universal/releases/tag/v0.4.1)
 - [Build workflow and downloadable artifacts](https://github.com/Moealbunni/film-space/actions/workflows/build-ipa.yml)
 
 **An unsigned IPA needs signing before installation. It is not an App Store or TestFlight download.** iOS 18 or later and an ARKit-capable iPhone are required. Both apps can edit and record independently, transfer scenes over local Wi-Fi, and show the iPhone camera view on Windows.
@@ -22,7 +22,7 @@ A local virtual studio: arrange colored 3D reference objects, then move your iPh
 6. Follow iOS prompts to trust the developer profile and enable Developer Mode if required. Open Film Space.
 7. Allow Camera for tracking, Photos for saving video, and Microphone if you want audio.
 
-Sideloadly supports free Apple accounts; free signing lasts seven days, with automatic refresh available. See the [official installation and refresh information](https://sideloadly.io/). Physical installation and device testing are deferred until the phone is connected.
+Sideloadly supports free Apple accounts; free signing lasts seven days, with automatic refresh available. See the [official installation and refresh information](https://sideloadly.io/). The earlier build has been installed on the owner’s iPhone. Install this update over it using the same Apple ID; the new controls and sustained frame rate still need checking on the physical phone.
 
 ## 2. Build your scene before recording
 
@@ -84,7 +84,9 @@ Landscape orientation is recommended for the bottom toolbar.
 
 ## Verification and remaining limits
 
-The 1.2 release adds local pairing, scene transfers and recording-menu auto-hide. The device build and both simulator tests passed in [run 39284353578](https://github.com/Moealbunni/film-space/actions/runs/39284353578), at source commit `80698fed6c3c09a97009dcecb4b19fc269ac4b8a`. The IPA archive was checked as version 1.2, build 3, minimum iOS 18, with the Local Network permission description. Real-device ARKit tracking, Wi-Fi preview performance, Photos/audio behavior and touch usability remain pending; physical iPhone installation is deferred. No Android or Mac package is included.
+The iPhone 1.3 device build and all five automated checks passed in [run 39398580782](https://github.com/Moealbunni/film-space/actions/runs/39398580782), at source commit `c068559dd77e889910395d034b0c8d703c319ea2`. Four unit checks covered scene editing/persistence, pairing/scene transfer, smooth zoom/reusable geometry, and a one-second MP4 encoded at approximately 60 fps. One UI test repeatedly switched Edit/Camera modes, added objects, changed zoom, hid/restored controls and checked landscape layout. The IPA archive was checked as version 1.3, build 4, minimum iOS 18, including the Local Network and Camera permission descriptions.
+
+The simulator does not verify physical ARKit tracking or sustained 60 fps on the user's phone. Real-device recording, audio/Photos output, Wi-Fi preview and touch responsiveness should be checked after installing this update. The earlier version was successfully installed, but this new binary has not been installed by this session. No Android or Mac package is included.
 
 
 ## Axis locks, resets, and direct controls
@@ -159,3 +161,5 @@ Movement scales physical travel from 0.1× to 10× and also adjusts joystick spe
 Edit and Camera now share one persistent ARView and tracking session, avoiding renderer destruction and tracking reset on every mode switch. Shape templates are reused; color changes update existing materials, and primitive selection uses simple bounding shapes rather than repeated mesh collision generation. The checkerboard uses one mesh instead of 200 tile entities. During recording, the Wi-Fi preview reuses captured frames instead of taking additional snapshots. The encoder queue is bounded to avoid accumulating frames when the device is busy.
 
 The MP4 recorder requests **60 fps**, H.264 and a 12 Mbps encoding bitrate, with the existing maximum image dimension of 1280 pixels. Actual captured frame rate can fall below 60 when the device cannot render/capture/encode fast enough; this update does not guarantee sustained 60 fps on every iPhone. The Windows monitor remains a lower-resolution preview at about 6 fps. Real-device performance verification is separate from compilation and simulator tests.
+
+Windows 0.4.1 also requests 60 fps recording and exports camera paths with a 60 fps timeline. Its live iPhone monitor remains a lightweight preview at about 6 fps.
