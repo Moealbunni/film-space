@@ -23,11 +23,19 @@ struct DesktopLinkView: View {
                     Text("Save your current scene first if you need it. Transfers include object types, colors, names, transforms, floor size and lens. Axis locks and saved camera viewpoints stay local.").font(.caption)
                 }
                 Section("Live monitor") {
-                    Text("Tap Done and enter Camera mode. On Windows press Live Monitor. The desktop displays the actual iPhone scene, with a recording indicator. The preview is lower resolution and has no audio; your full MP4 is recorded on the iPhone.")
+                    Button("Show live view on Windows") {
+                        state.trackingSuspended = false
+                        state.mode = .camera
+                        Task { await state.desktopLink.showMonitor() }
+                        dismiss()
+                    }.disabled(!state.desktopLink.isConnected)
+                    Text(state.desktopLink.previewStatus)
+
+                    Text("Tap Show live view on Windows, or tap Done and press Live Monitor on Windows. Preview works in both Edit and Camera. The desktop displays the actual iPhone scene, with a recording indicator. The preview is lower resolution and has no audio; your full MP4 is recorded on the iPhone.")
                     Text("Keep both apps open. No cloud service or AI credits are used. Use a trusted private Wi-Fi network.").font(.caption)
                 }
             }.navigationTitle("Desktop link")
-                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+                .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { state.trackingSuspended = false; dismiss() } } }
                 .sheet(isPresented: $scanning, onDismiss: { state.trackingSuspended = false }) { QRScanner { result in text = result; scanning = false; Task { await state.desktopLink.connect(result) } } }
         }
     }

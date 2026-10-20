@@ -51,6 +51,7 @@ private final class LocalRedirectGuard: NSObject, URLSessionTaskDelegate {
 final class DesktopLink {
     var isConnected = false
     var message = "Not connected"
+    var previewStatus = "No preview sent yet"
     private var base: URL?
     private var token = ""
     private var generation = UUID()
@@ -95,7 +96,7 @@ final class DesktopLink {
             }
         } catch { if generation == attempt { message = error.localizedDescription; base = nil; token = "" } }
     }
-    func disconnect() { generation = UUID(); heartbeat?.cancel(); heartbeat = nil; base = nil; token = ""; isConnected = false; message = "Disconnected" }
+    func disconnect() { generation = UUID(); heartbeat?.cancel(); heartbeat = nil; base = nil; token = ""; isConnected = false; message = "Disconnected"; previewStatus = "No preview sent yet" }
     private func request(_ path: String, data: Data? = nil, type: String = "application/json", recording: Bool = false) async throws -> Data {
         guard let base else { throw LinkError.invalidPair }
         var req = URLRequest(url: base.appendingPathComponent(path))
@@ -120,6 +121,10 @@ final class DesktopLink {
         do { let data = try JSONEncoder().encode(LinkedScene(state: state)); _ = try await request("phone-scene", data: data); message = "Sent. On Windows tap Load received phone scene." }
         catch { message = error.localizedDescription }
     }
+    func showMonitor() async {
+        do { _ = try await request("monitor", data: Data()); message = "Windows live monitor opened" }
+        catch { message = "On Windows press Live Monitor (update Windows to 0.4.2 for remote opening)." }
+    }
     func sendPreview(_ image: UIImage, recording: Bool) {
         let now = Date.timeIntervalSinceReferenceDate
         guard isConnected, !sending, now-lastFrame >= 0.12 else { return }
@@ -129,10 +134,14 @@ final class DesktopLink {
         let format = UIGraphicsImageRendererFormat(); format.scale = 1
         let reduced = UIGraphicsImageRenderer(size: size, format: format).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
         guard let jpeg = reduced.jpegData(compressionQuality: 0.6) else { sending = false; return }
+        let attempt = generation
         Task {
             defer { sending = false }
-            do { _ = try await request("frame", data: jpeg, type: "image/jpeg", recording: recording) }
-            catch { message = "Preview interrupted. Check desktop sharing and Wi-Fi." }
+            do {
+                _ = try await request("frame", data: jpeg, type: "image/jpeg", recording: recording)
+                if generation == attempt, previewStatus != "Preview is reaching Windows" { previewStatus = "Preview is reaching Windows" }
+            }
+            catch { if generation == attempt { previewStatus = "Preview upload failed: " + error.localizedDescription } }
         }
     }
 }

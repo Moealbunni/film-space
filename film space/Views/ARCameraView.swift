@@ -220,12 +220,13 @@ struct ARCameraView: UIViewRepresentable {
 
         private func streamPreview() {
             let now = Date.timeIntervalSinceReferenceDate
-            guard !recorder.isRecording, sceneState.mode == .camera, sceneState.desktopLink.isConnected, !previewBusy, now-lastPreview >= 0.15, let arView else { return }
+            guard !recorder.isRecording, sceneState.desktopLink.isConnected, !previewBusy, now-lastPreview >= 0.15, let arView else { return }
             previewBusy = true; lastPreview = now
             arView.snapshot(saveToHDR: false) { [weak self] image in
                 Task { @MainActor in
                     guard let self else { return }; self.previewBusy = false
                     if let image { self.sceneState.desktopLink.sendPreview(image, recording: self.sceneState.isRecording) }
+                    else { self.sceneState.desktopLink.previewStatus = "Waiting for the scene renderer. Close the menu to show the scene." }
                 }
             }
         }
