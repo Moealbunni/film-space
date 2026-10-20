@@ -38,6 +38,18 @@ struct CameraSideControls: View {
                 else { camera.lockedTransform = state.mode == .camera ? (camera.liveCameraTransform ?? camera.worldTransform) : camera.worldTransform; camera.isViewLocked = true }
             }
             Button("Axis locks / Reset", action: openAxes)
+            Menu("Lens / saved view") {
+                Picker("Lens", selection: $state.focalLength) {
+                    ForEach(FocalLength.allCases, id: \.self) { Text($0.label).tag($0) }
+                }.disabled(camera.lensLocked)
+                Button("Return to saved view") {
+                    if state.mode == .camera { camera.pendingRecenter = true }
+                    else { camera.returnToLockedTransform() }
+                }.disabled(camera.lockedTransform == nil)
+                if state.mode == .camera {
+                    Button("Shoulder position") { camera.pendingShoulderPlacement = true }
+                }
+            }
         }
         .onReceive(tick) { _ in
             if !camera.lensLocked && zoomDirection != 0 {

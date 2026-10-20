@@ -36,31 +36,31 @@ Landscape orientation is recommended for the bottom toolbar.
 6. Edit Position X/Y/Z with number fields or +/- controls. Y is height. Use Rotation X/Y/Z to tilt or turn it. Duplicate makes a copy; Delete removes it.
 7. Adjust Floor size, from 2 to 200 meters, in the same panel.
 8. Tap **Save scene** before leaving the app. This stores one scene on this iPhone; saving again replaces it. **Load saved scene** restores it. Deleting the app deletes its local save.
-9. Tap **Done**. Tap empty space to deselect, drag to orbit, and pinch to approach or move away. A selected object can be dragged across the floor without losing its height.
+9. Tap **Done**. Tap empty space to deselect, drag to orbit, and pinch to zoom the lens in or out. A selected object can be dragged across the floor without losing its height.
 
 ## 3. Frame and control the camera
 
-- The bottom arrows raise/lower the edit camera; the joystick moves it across the floor.
+- The side-panel Up / Down controls raise/lower the camera; the joystick moves it across the floor in both modes.
 - Set Touch sensitivity in Objects & scene for slower or faster orbit gestures.
-- Lock saves and freezes the current viewpoint. Tap the open-lock icon or **Unlock viewpoint** once to resume navigation. Object editing remains available while the viewpoint is locked.
-- Return recalls the last saved viewpoint. Unlocking does not erase that saved pose.
-- Choose a lens in the editor, or cycle 35/50/75/200 mm in Camera mode.
+- Lock saves and freezes the current viewpoint. Tap **Unlock viewpoint** once to resume navigation. Object editing remains available while the viewpoint is locked.
+- Lens / saved view → Return to saved view recalls the last saved viewpoint. Unlocking does not erase that saved pose.
+- Choose 18/24/35/50/75/200 mm in the editor or the side-panel Lens / saved view menu.
 
 ## 4. Use physical iPhone tracking
 
 1. Frame the scene in Edit, unlock the viewpoint, then switch to **Camera**.
-2. Let tracking initialize. The top status says **Tracking ready** when ARKit reports normal tracking.
+2. Let tracking initialize. The status message says **Tracking ready** when ARKit reports normal tracking.
 3. Walk forward/backward or sideways, raise/lower the phone, and tilt/turn it. Position and rotation both drive the virtual camera. The real camera supplies tracking data; its live background is not recorded.
 4. Use a well-lit room with visible surface detail. A blank wall, covered camera, or abrupt motion can reduce tracking quality; the status advises moving slowly.
-5. For slow movement, set Phone movement to 0.1–0.5× **before entering Camera**. At 1×, one physical meter becomes one virtual meter; rotation remains direct. This changes camera movement, not time or object animation.
-6. Shoulder placement moves the camera to roughly 1.5 m at the scene center. Return rebases tracking onto your saved viewpoint.
+5. For slow movement, set Phone movement to 0.1–0.5× in the side panel, including during recording. At 1×, one physical meter becomes one virtual meter; rotation uses the selected smoothing. This changes camera movement, not time or object animation.
+6. Lens / saved view → Shoulder position moves the camera to roughly 1.5 m at the scene center. Return rebases tracking onto your saved viewpoint.
 
 ## 5. Record and find the video
 
-1. Tap the red circle in Camera mode.
-2. Perform the move. Tap the red square to stop.
+1. Tap Record in Camera mode.
+2. Perform the move. Tap Stop to finish.
 3. Wait for encoding and check the video in Photos. Allow Photos access when prompted.
-4. The export is H.264 MP4, targeting 30 fps with a maximum long side of 1280 pixels, plus microphone audio when available. Actual throughput depends on the device.
+4. The export is H.264 MP4, targeting 60 fps with a maximum long side of 1280 pixels, plus microphone audio when available. Actual throughput depends on the device.
 5. Buttons, object panels, tracking messages, selection controls, and editor guide axes are excluded. The checkerboard floor and objects remain in the scene.
 6. Share the MP4 from Photos to your PC or a video-reference AI workflow. This app does not automatically call an AI service.
 
@@ -77,8 +77,8 @@ Landscape orientation is recommended for the bottom toolbar.
 - `Models/SceneState.swift`: object properties, local persistence, camera settings.
 - `Views/ObjectEditorView.swift`: add menu, object list, inspector, save/load.
 - `Services/SceneContentBuilder.swift`: primitive and vehicle geometry.
-- `Views/VirtualStudioView.swift`: scene editing and touch gestures.
-- `Views/ARCameraView.swift`: ARKit positional/rotational tracking and camera locking.
+- `Views/ARCameraView.swift`: shared edit/camera renderer, gestures, tracking and smoothing.
+- `Views/CameraSideControls.swift`: joystick, zoom and movement controls.
 - `Services/SceneRecorder.swift`: scene-only MP4 and audio encoding.
 - `.github/workflows/build-ipa.yml`: hosted build and packaging.
 
@@ -95,7 +95,7 @@ The 1.2 release adds local pairing, scene transfers and recording-menu auto-hide
 - **Reset position** returns an object to the origin; **Reset rotation** returns all angles to zero; **Reset size** returns all scales to 1. Each reset clears its group's locks. Reset size makes a child adult-sized; use Smaller to shrink it again.
 - For the camera, Position Reset returns to (0, 1.6, 4) meters; Rotation Reset faces along the default forward direction. **Reset camera** clears position/rotation locks and full viewpoint locking, then restores both defaults.
 - On Windows, select an object and use its floating **Move / Rotate / Resize** buttons to show draggable 3D handles. Bigger/Smaller and Lift/Lower are beside the object. The side inspector provides exact numbers and locks.
-- On iPhone, tap an object or select it in Objects & scene. The right-hand quick panel provides Bigger/Smaller, Lift/Lower and Edit details. **Camera controls** opens the axis lock panel in either mode.
+- On iPhone, tap an object or select it in Objects & scene. The right-hand quick panel provides Bigger/Smaller, Lift/Lower and Edit details. **Menu → Camera axis locks & reset** opens the axis lock panel in either mode.
 - Resizing from ground level keeps the object's base on the floor; Lift/Lower changes its height deliberately. Floor resizing scales the checkerboard squares along with the ground.
 - Recording captures only the scene. Quick panels and 3D editing handles are excluded.
 
