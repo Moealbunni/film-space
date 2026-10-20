@@ -75,7 +75,7 @@ struct ObjectEditorView: View {
                 Section("Floor & camera") {
                     Slider(value: $sceneState.floorSize, in: 2...200, step: 1) { Text("Floor size") }
                     Text("Floor: \(Int(sceneState.floorSize)) meters")
-                    Slider(value: $sceneState.movementScale, in: 0.1...3, step: 0.1) { Text("Camera movement scale") }
+                    Slider(value: $sceneState.movementScale, in: 0.1...10, step: 0.1) { Text("Camera movement scale") }
                     Text("Phone movement: \(sceneState.movementScale, specifier: "%.1f")× — use 0.1–0.5× for slow moves")
                     Slider(value: $sceneState.touchSensitivity, in: 0.1...3, step: 0.1) { Text("Touch sensitivity") }
                     Text("Touch sensitivity: \(sceneState.touchSensitivity, specifier: "%.1f")×")

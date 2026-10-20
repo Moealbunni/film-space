@@ -11,7 +11,7 @@ struct DesktopLinkView: View {
             Form {
                 Section("Pair on the same Wi-Fi") {
                     Text("On Windows, open Connect iPhone and press Start pairing. Scan its QR here. Allow Local Network access when iOS asks.")
-                    Button("Scan desktop QR") { state.mode = .edit; scanning = true }.disabled(state.isRecording)
+                    Button("Scan desktop QR") { state.mode = .edit; state.trackingSuspended = true; scanning = true }.disabled(state.isRecording)
                     TextField("Or paste the pairing address", text: $text).textInputAutocapitalization(.never).autocorrectionDisabled()
                     Button("Connect") { Task { await state.desktopLink.connect(text) } }
                     Text(state.desktopLink.message)
@@ -28,7 +28,7 @@ struct DesktopLinkView: View {
                 }
             }.navigationTitle("Desktop link")
                 .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-                .sheet(isPresented: $scanning) { QRScanner { result in text = result; scanning = false; Task { await state.desktopLink.connect(result) } } }
+                .sheet(isPresented: $scanning, onDismiss: { state.trackingSuspended = false }) { QRScanner { result in text = result; scanning = false; Task { await state.desktopLink.connect(result) } } }
         }
     }
 }

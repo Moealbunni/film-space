@@ -251,7 +251,7 @@ struct StudioToolbar: View {
 
 // Analog joystick: returns a normalized vector (-1...1 per axis) while held,
 // snapping back to zero on release. width = strafe, height = forward/back.
-private struct Joystick: View {
+struct Joystick: View {
     @Binding var value: CGSize
     var size: CGFloat = 104
 

@@ -76,4 +76,29 @@ struct film_spaceTests {
         #expect(throws: (any Error).self) { try scene.apply(to: target) }
         #expect(target.humans == previous)
     }
+    @Test @MainActor func smoothCameraAndReusableGeometry() throws {
+        #expect(CameraMotion.response(dt: 1/60, smoothing: 0) == 1)
+        let a = CameraMotion.response(dt: 1/60, smoothing: 0.5)
+        #expect(a > 0 && a < 1)
+        let one = CameraMotion.smoothLens(current: 35, target: 140, dt: 1/30)
+        let half = CameraMotion.smoothLens(current: 35, target: 140, dt: 1/60)
+        let two = CameraMotion.smoothLens(current: half, target: 140, dt: 1/60)
+        #expect(abs(one - two) < 0.001)
+        #expect(one > 35 && one < 140)
+        var lens: Float = 35
+        for _ in 0..<120 { lens = CameraMotion.smoothLens(current: lens, target: 140, dt: 1/60) }
+        #expect(abs(lens - 140) < 0.01)
+        let state = SceneState(); state.addObject(.car)
+        let root = Entity()
+        SceneContentBuilder.syncHumans(placements: state.humans, selectedID: nil, into: root)
+        let original = root.children.first!
+        state.editSelected { $0.colorHex = "FF0000"; $0.position.x = 4 }
+        SceneContentBuilder.syncHumans(placements: state.humans, selectedID: nil, into: root)
+        #expect(root.children.first === original)
+        #expect(original.position.x == 4)
+        state.zoomMultiplier = 2.5; state.movementScale = 10; state.cameraSmoothing = 0.7
+        state.saveScene(); state.zoomMultiplier = 1; state.movementScale = 1; state.loadScene()
+        #expect(state.zoomMultiplier == 2.5 && state.movementScale == 10)
+        #expect(state.cameraSmoothing == 0.7)
+    }
 }

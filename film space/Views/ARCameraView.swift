@@ -6,6 +6,7 @@
 import SwiftUI
 import RealityKit
 import ARKit
+import UIKit
 
 struct ARCameraView: UIViewRepresentable {
     @Bindable var sceneState: SceneState
@@ -30,7 +31,7 @@ struct ARCameraView: UIViewRepresentable {
     static func dismantleUIView(_ uiView: ARView, coordinator: Coordinator) {
         coordinator.recorder.stop()
         coordinator.sceneState.isRecording = false
-        coordinator.trackingSession.pause()
+        coordinator.shutdown()
     }
 
     final class Coordinator: NSObject, ARSessionDelegate {
@@ -44,7 +45,20 @@ struct ARCameraView: UIViewRepresentable {
         private var studioRoot: Entity?
         private var cameraEntity: Entity?
         private var referenceTransform: simd_float4x4?
-        private var lastHumanSignature = ""
+        private var lastHumans: [HumanPlacement]?
+        private var lastFloor: Float?
+        private var currentMode: AppMode?
+        private var latestDevice: simd_float4x4?
+        private var displayLink: CADisplayLink?
+        private var lastTick: TimeInterval = 0
+        private var trackingStarted = false
+        private var trackingPaused = false
+        private var lastMovementScale: Float = 1
+        private var virtualOffset: SIMD3<Float> = .zero
+        private var filteredPose: Transform?
+        private var displayedLens: Float = 35
+        private var dragStart: SIMD3<Float>?
+        private var pinchStart: Float = 1
         private var lastFocalLength: FocalLength?
         private var previewBusy = false
         private var lastPreview: TimeInterval = 0
@@ -64,8 +78,7 @@ struct ARCameraView: UIViewRepresentable {
             anchor.addChild(root)
             studioRoot = root
 
-            let camera = Entity()
-            camera.components.set(PerspectiveCameraComponent())
+            let camera = cameraController.makeCameraEntity()
             camera.transform = Transform(matrix: editCameraTransform)
             anchor.addChild(camera)
             cameraEntity = camera
@@ -73,11 +86,22 @@ struct ARCameraView: UIViewRepresentable {
             arView.scene.addAnchor(anchor)
 
             rebuildScene()
-            startTracking()
+            let pan = UIPanGestureRecognizer(target: self, action: #selector(pan(_:)))
+            arView.addGestureRecognizer(pan)
+            arView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tap(_:))))
+            arView.addGestureRecognizer(UIPinchGestureRecognizer(target: self, action: #selector(pinch(_:))))
+            recorder.onPreview = { [weak self] image in
+                guard let self else { return }
+                self.sceneState.desktopLink.sendPreview(image, recording: true)
+            }
+            let link = CADisplayLink(target: self, selector: #selector(tick(_:)))
+            link.preferredFramesPerSecond = 60
+            link.add(to: .main, forMode: .common); displayLink = link
         }
 
         private func startTracking() {
-            guard ARWorldTrackingConfiguration.isSupported else { return }
+            guard ARWorldTrackingConfiguration.isSupported, !trackingStarted else { return }
+            trackingStarted = true
             trackingSession.delegate = self
             let config = ARWorldTrackingConfiguration()
             config.planeDetection = []
@@ -88,12 +112,12 @@ struct ARCameraView: UIViewRepresentable {
         func rebuildScene() {
             guard let root = studioRoot else { return }
 
-            SceneEnvironment.updateFloor(root, size: sceneState.floorSize, showGuides: false)
-            let signature = sceneState.humans
-                .map { "\($0)" }
-                .joined(separator: "|")
-            guard signature != lastHumanSignature else { return }
-            lastHumanSignature = signature
+            if lastFloor != sceneState.floorSize || currentMode != sceneState.mode {
+                SceneEnvironment.updateFloor(root, size: sceneState.floorSize, showGuides: sceneState.mode == .edit)
+                lastFloor = sceneState.floorSize
+            }
+            guard lastHumans != sceneState.humans else { return }
+            lastHumans = sceneState.humans
 
             SceneContentBuilder.syncHumans(
                 placements: sceneState.humans,
@@ -111,21 +135,27 @@ struct ARCameraView: UIViewRepresentable {
             case .limited: trackingMessage = "Move slowly in a well-lit room with visible detail"
             }
             Task { @MainActor in
-                self.sceneState.trackingStatus = trackingMessage
-                self.applyDeviceMotion(deviceTransform)
+                if self.sceneState.trackingStatus != trackingMessage { self.sceneState.trackingStatus = trackingMessage }
+                if self.latestDevice == nil { self.referenceTransform = deviceTransform }
+                self.latestDevice = deviceTransform
             }
         }
 
         @MainActor
-        private func applyDeviceMotion(_ deviceTransform: simd_float4x4) {
+        private func applyDeviceMotion(_ deviceTransform: simd_float4x4, dt: Float) {
+            if lastMovementScale != sceneState.movementScale {
+                editCameraTransform = cameraEntity?.transform.matrix ?? editCameraTransform
+                referenceTransform = deviceTransform; virtualOffset = .zero
+                lastMovementScale = sceneState.movementScale
+            }
             if let manual = cameraController.pendingManualPose {
-                editCameraTransform = manual; referenceTransform = deviceTransform
+                editCameraTransform = manual; referenceTransform = deviceTransform; virtualOffset = .zero; filteredPose = nil
                 cameraController.pendingManualPose = nil
             }
             // Return-to-lock: rebase onto the locked pose at the current physical
             // position so the camera snaps back to the locked spot.
             if cameraController.pendingRecenter, let locked = cameraController.lockedTransform {
-                editCameraTransform = locked
+                editCameraTransform = locked; virtualOffset = .zero; filteredPose = nil
                 referenceTransform = deviceTransform
                 cameraController.pendingRecenter = false
             }
@@ -140,7 +170,7 @@ struct ARCameraView: UIViewRepresentable {
                     cameraController.target.z,
                     1
                 )
-                editCameraTransform = placed
+                editCameraTransform = placed; virtualOffset = .zero; filteredPose = nil
                 referenceTransform = deviceTransform
                 cameraController.pendingShoulderPlacement = false
             }
@@ -154,7 +184,7 @@ struct ARCameraView: UIViewRepresentable {
                 camera.transform = Transform(matrix: locked)
                 editCameraTransform = locked; referenceTransform = deviceTransform
                 cameraController.liveCameraTransform = locked
-                applyFocalLengthIfNeeded(); syncRecording(); streamPreview(); return
+                virtualOffset = .zero; filteredPose = Transform(matrix: locked); return
             }
             let edit = editCameraTransform
 
@@ -169,19 +199,27 @@ struct ARCameraView: UIViewRepresentable {
             // heads toward the scene from the edit-mode viewpoint.
             let worldDelta = translation(deviceTransform) - translation(reference)
             let yawAlign = simd_quatf(angle: yaw(of: edit) - yaw(of: reference), axis: [0, 1, 0])
-            let newPosition = translation(edit) + yawAlign.act(worldDelta) * sceneState.movementScale
+            let input = cameraController.movementInput
+            let heading = OrbitCameraController.angles(camera.transform.matrix).y
+            let right = SIMD3<Float>(cos(heading), 0, -sin(heading))
+            let forward = SIMD3<Float>(-sin(heading), 0, -cos(heading))
+            virtualOffset += (right * input.x + SIMD3<Float>(0,input.y,0) + forward * input.z) * dt * sceneState.movementScale
+            let newPosition = translation(edit) + yawAlign.act(worldDelta) * sceneState.movementScale + virtualOffset
 
-            camera.transform = Transform(matrix: cameraController.constrained(Transform(scale: .one, rotation: newRotation, translation: newPosition).matrix))
+            let target = Transform(scale: .one, rotation: newRotation, translation: newPosition)
+            let alpha = CameraMotion.response(dt: dt, smoothing: sceneState.cameraSmoothing)
+            var filtered = filteredPose ?? target
+            filtered.translation += (target.translation - filtered.translation) * alpha
+            filtered.rotation = simd_slerp(filtered.rotation, target.rotation, alpha)
+            camera.transform = Transform(matrix: cameraController.constrained(filtered.matrix))
+            filteredPose = camera.transform
             cameraController.liveCameraTransform = camera.transform.matrix
 
-            applyFocalLengthIfNeeded()
-            syncRecording()
-            streamPreview()
         }
 
         private func streamPreview() {
             let now = Date.timeIntervalSinceReferenceDate
-            guard sceneState.desktopLink.isConnected, !previewBusy, now-lastPreview >= 0.15, let arView else { return }
+            guard !recorder.isRecording, sceneState.mode == .camera, sceneState.desktopLink.isConnected, !previewBusy, now-lastPreview >= 0.15, let arView else { return }
             previewBusy = true; lastPreview = now
             arView.snapshot(saveToHDR: false) { [weak self] image in
                 Task { @MainActor in
@@ -199,15 +237,85 @@ struct ARCameraView: UIViewRepresentable {
             }
         }
 
-        private func applyFocalLengthIfNeeded() {
-            guard let camera = cameraEntity else { return }
-            let focal = sceneState.focalLength
-            guard focal != lastFocalLength else { return }
-            lastFocalLength = focal
+        func shutdown() {
+            displayLink?.invalidate(); displayLink = nil
+            trackingSession.delegate = nil; trackingSession.pause()
+            cameraController.movementInput = .zero
+        }
 
+        @objc private func tick(_ link: CADisplayLink) {
+            let dt = Float(min(max(link.timestamp - lastTick, 0.001), 0.05)); lastTick = link.timestamp
+            if sceneState.trackingSuspended {
+                syncRecording()
+                if !trackingPaused { trackingSession.pause(); trackingPaused = true }
+                return
+            }
+            if trackingPaused {
+                trackingPaused = false
+                if trackingStarted { trackingSession.run(ARWorldTrackingConfiguration()) }
+                referenceTransform = nil; latestDevice = nil
+                editCameraTransform = cameraEntity?.transform.matrix ?? editCameraTransform
+                virtualOffset = .zero; filteredPose = nil
+            }
+            if currentMode != sceneState.mode {
+                if sceneState.mode == .camera {
+                    editCameraTransform = cameraController.worldTransform
+                    referenceTransform = latestDevice; virtualOffset = .zero; filteredPose = nil
+                    cameraController.pendingManualPose = nil
+                    lastMovementScale = sceneState.movementScale
+                    startTracking()
+                } else if currentMode == .camera, let live = cameraController.liveCameraTransform {
+                    cameraController.setManualPose(live)
+                }
+                if let root = studioRoot { SceneEnvironment.updateFloor(root, size: sceneState.floorSize, showGuides: sceneState.mode == .edit) }
+                currentMode = sceneState.mode
+                cameraController.movementInput = .zero
+            }
+            if sceneState.mode == .camera {
+                applyDeviceMotion(latestDevice ?? matrix_identity_float4x4, dt: dt)
+            } else {
+                cameraController.updateCameraTransform()
+            }
+            applyLens(dt: dt)
+            syncRecording(); streamPreview()
+        }
+
+        private func applyLens(dt: Float) {
+            guard let camera = cameraEntity else { return }
+            let desired = sceneState.focalLength.rawValue * sceneState.zoomMultiplier
+            displayedLens = CameraMotion.smoothLens(current: displayedLens, target: desired, dt: dt)
             var component = camera.components[PerspectiveCameraComponent.self] ?? PerspectiveCameraComponent()
-            component.fieldOfViewInDegrees = focal.horizontalFOVDegrees
+            component.fieldOfViewInDegrees = 2 * atan(36 / (2 * displayedLens)) * 180 / .pi
             camera.components.set(component)
+        }
+
+        @objc private func tap(_ gesture: UITapGestureRecognizer) {
+            guard sceneState.mode == .edit, let arView else { return }
+            var entity = arView.entity(at: gesture.location(in: arView))
+            while let candidate = entity {
+                if let tag = candidate.components[HumanTagComponent.self] { sceneState.selectHuman(id: tag.id); return }
+                entity = candidate.parent
+            }
+            sceneState.selectHuman(id: nil)
+        }
+        @objc private func pan(_ gesture: UIPanGestureRecognizer) {
+            guard sceneState.mode == .edit, let arView else { return }
+            let delta = gesture.translation(in: arView)
+            if gesture.state == .began { dragStart = sceneState.selectedHuman?.position }
+            if let start = dragStart, let id = sceneState.selectedHumanID {
+                let a = cameraController.azimuth, scale = cameraController.distance * 0.0012
+                let offset = SIMD3<Float>(cos(a),0,-sin(a)) * Float(delta.x) * scale + SIMD3<Float>(sin(a),0,cos(a)) * Float(delta.y) * scale
+                sceneState.updateHumanPosition(id: id, position: start + offset)
+            } else {
+                cameraController.orbit(deltaAzimuth: Float(delta.x)*0.005*sceneState.touchSensitivity, deltaElevation: -Float(delta.y)*0.005*sceneState.touchSensitivity)
+                gesture.setTranslation(.zero, in: arView)
+            }
+            if gesture.state == .ended || gesture.state == .cancelled { dragStart = nil }
+        }
+        @objc private func pinch(_ gesture: UIPinchGestureRecognizer) {
+            guard !cameraController.lensLocked else { return }
+            if gesture.state == .began { pinchStart = sceneState.zoomMultiplier }
+            sceneState.zoomMultiplier = min(max(pinchStart * Float(gesture.scale), 0.5), 4)
         }
 
         private func rotation(_ m: simd_float4x4) -> simd_float3x3 {

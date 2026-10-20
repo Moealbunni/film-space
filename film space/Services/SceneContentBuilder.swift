@@ -3,6 +3,7 @@ import RealityKit
 import UIKit
 
 enum SceneContentBuilder {
+    private static var templates: [ObjectKind: Entity] = [:]
     static func syncHumans(placements: [HumanPlacement], selectedID: UUID?, into root: Entity) {
         let existing = Dictionary(uniqueKeysWithValues: root.children.compactMap { child -> (UUID, Entity)? in
             guard let tag = child.components[HumanTagComponent.self] else { return nil }
@@ -11,7 +12,7 @@ enum SceneContentBuilder {
         let ids = Set(placements.map(\.id))
         for (id, entity) in existing where !ids.contains(id) { entity.removeFromParent() }
         for p in placements {
-            let signature = "\(p.kind)-\(p.colorHex)"
+            let signature = p.kind.rawValue
             var entity = existing[p.id]
             if entity?.components[ObjectAppearanceComponent.self]?.signature != signature {
                 entity?.removeFromParent()
@@ -19,6 +20,10 @@ enum SceneContentBuilder {
                 entity!.components.set(HumanTagComponent(id: p.id))
                 entity!.components.set(ObjectAppearanceComponent(signature: signature))
                 root.addChild(entity!)
+            }
+            if let entity, entity.components[ObjectColorComponent.self]?.hex != p.colorHex {
+                paint(entity, hex: p.colorHex)
+                entity.components.set(ObjectColorComponent(hex: p.colorHex))
             }
             entity?.position = p.position
             entity?.orientation = simd_quatf(angle: p.rotationY, axis: [0,1,0]) * simd_quatf(angle: p.rotationX, axis: [1,0,0]) * simd_quatf(angle: p.rotationZ, axis: [0,0,1])
@@ -29,7 +34,16 @@ enum SceneContentBuilder {
         let value = UInt32(hex, radix: 16) ?? 0x596173
         return UIColor(red: CGFloat((value >> 16) & 255)/255, green: CGFloat((value >> 8) & 255)/255, blue: CGFloat(value & 255)/255, alpha: 1)
     }
+    private static func paint(_ entity: Entity, hex: String) {
+        if entity.name != "Rubber", let model = entity as? ModelEntity {
+            model.model?.materials = [SimpleMaterial(color: color(hex), roughness: 0.7, isMetallic: false)]
+        }
+        for child in entity.children { paint(child, hex: hex) }
+    }
     static func makeObject(_ p: HumanPlacement) -> Entity {
+        if let template = templates[p.kind] {
+            let copy = template.clone(recursive: true); paint(copy, hex: p.colorHex); return copy
+        }
         let material = SimpleMaterial(color: color(p.colorHex), roughness: 0.7, isMetallic: false)
         let root: Entity
         if p.kind == .person || p.kind == .child {
@@ -43,7 +57,7 @@ enum SceneContentBuilder {
             root = Entity()
             func part(_ mesh: MeshResource, _ position: SIMD3<Float>, _ mat: SimpleMaterial? = nil) -> ModelEntity {
                 let e = ModelEntity(mesh: mesh, materials: [mat ?? material]); e.position = position
-                e.generateCollisionShapes(recursive: false); e.components.set(InputTargetComponent()); root.addChild(e); return e
+                root.addChild(e); return e
             }
             func box(_ size: SIMD3<Float>, _ pos: SIMD3<Float>) { _ = part(.generateBox(size: size), pos) }
             switch p.kind {
@@ -52,7 +66,7 @@ enum SceneContentBuilder {
                 let rubber = SimpleMaterial(color: .darkGray, roughness: 1, isMetallic: false)
                 for x in [Float(-0.92), Float(0.92)] { for z in [Float(-1.1), Float(1.1)] {
                     let wheel = part(.generateCylinder(height: 0.22, radius: 0.38), [x,0.38,z], rubber)
-                    wheel.orientation = simd_quatf(angle: .pi/2, axis: [0,0,1])
+                    wheel.orientation = simd_quatf(angle: .pi/2, axis: [0,0,1]); wheel.name = "Rubber"
                 }}
             case .bike:
                 for z in [Float(-0.7), Float(0.7)] {
@@ -69,16 +83,26 @@ enum SceneContentBuilder {
             case .cone: _ = part(.generateCone(height: 1, radius: 0.5), [0,0.5,0])
             case .torus:
                 // A ring assembled from small rounded segments; no external model assets.
-                for i in 0..<32 { let a = Float(i) * 2 * .pi / 32
-                    _ = part(.generateSphere(radius: 0.16), [cos(a)*0.5,0.66+sin(a)*0.5,0])
+                let segment = MeshResource.generateSphere(radius: 0.16)
+                for i in 0..<24 { let a = Float(i) * 2 * .pi / 24
+                    _ = part(segment, [cos(a)*0.5,0.66+sin(a)*0.5,0])
                 }
             default: box([1,1,1],[0,0.5,0])
             }
         }
+        if p.kind != .person && p.kind != .child {
+            let bounds = root.visualBounds(relativeTo: root)
+            let shape = ShapeResource.generateBox(size: simd_max(bounds.extents, SIMD3<Float>(repeating: 0.05))).offsetBy(translation: bounds.center)
+            root.components.set(CollisionComponent(shapes: [shape]))
+            root.components.set(InputTargetComponent())
+        }
         root.name = "HumanFigure"
+        templates[p.kind] = root.clone(recursive: true)
         return root
     }
 }
 struct HumanTagComponent: Component { var id: UUID }
 struct HumanSelectionComponent: Component { var isSelected: Bool }
 struct ObjectAppearanceComponent: Component { var signature: String }
+
+struct ObjectColorComponent: Component { var hex: String }

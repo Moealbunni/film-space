@@ -67,6 +67,9 @@ final class SceneState {
     var humans: [HumanPlacement] = []
     var selectedHumanID: UUID?
     var focalLength: FocalLength = .mm35
+    var zoomMultiplier: Float = 1
+    var cameraSmoothing: Float = 0.35
+    var trackingSuspended = false
     var isRecording = false
     var floorSize: Float = 20
     var movementScale: Float = 1
@@ -80,10 +83,12 @@ final class SceneState {
         var lens: Float
         var movementScale: Float
         var touchSensitivity: Float
+        var zoomMultiplier: Float?
+        var cameraSmoothing: Float?
     }
     func saveScene() {
         do {
-            let data = try JSONEncoder().encode(SavedScene(objects: humans, floorSize: floorSize, lens: focalLength.rawValue, movementScale: movementScale, touchSensitivity: touchSensitivity))
+            let data = try JSONEncoder().encode(SavedScene(objects: humans, floorSize: floorSize, lens: focalLength.rawValue, movementScale: movementScale, touchSensitivity: touchSensitivity, zoomMultiplier: zoomMultiplier, cameraSmoothing: cameraSmoothing))
             UserDefaults.standard.set(data, forKey: "film-space-editor-v2")
             saveMessage = "Scene saved on this iPhone"
         } catch { saveMessage = "Could not save: \(error.localizedDescription)" }
@@ -94,7 +99,9 @@ final class SceneState {
             let saved = try JSONDecoder().decode(SavedScene.self, from: data)
             humans = saved.objects; floorSize = saved.floorSize
             focalLength = FocalLength(rawValue: saved.lens) ?? .mm35
-            movementScale = saved.movementScale; touchSensitivity = saved.touchSensitivity
+            movementScale = min(max(saved.movementScale, 0.1), 10); touchSensitivity = saved.touchSensitivity
+            zoomMultiplier = min(max(saved.zoomMultiplier ?? 1, 0.5), 4)
+            cameraSmoothing = min(max(saved.cameraSmoothing ?? 0.35, 0), 1)
             selectedHumanID = humans.first?.id
             saveMessage = "Scene loaded"
         } catch { saveMessage = "Could not load: \(error.localizedDescription)" }

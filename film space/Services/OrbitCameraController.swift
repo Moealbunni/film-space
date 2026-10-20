@@ -16,6 +16,7 @@ final class OrbitCameraController {
     var lockedPosition: SIMD3<Float> = .zero
     var lockedRotation: SIMD3<Float> = .zero
     var pendingManualPose: simd_float4x4?
+    @ObservationIgnored var movementInput: SIMD3<Float> = .zero
 
     static func angles(_ m: simd_float4x4) -> SIMD3<Float> {
         let x = asin(min(max(-m.columns.2.y, -1), 1))
@@ -136,7 +137,7 @@ final class OrbitCameraController {
 
     /// Latest camera pose while in Camera mode, written by the AR view so the
     /// lock button can capture the current viewpoint.
-    var liveCameraTransform: simd_float4x4?
+    @ObservationIgnored var liveCameraTransform: simd_float4x4?
 
     /// Set by the return button in Camera mode; consumed by the AR view to snap
     /// the camera back to the locked pose at the current physical position.

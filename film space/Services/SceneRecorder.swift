@@ -14,6 +14,7 @@ import UIKit
 @MainActor
 final class SceneRecorder: NSObject {
     private(set) var isRecording = false
+    var onPreview: ((UIImage) -> Void)?
 
     private weak var arView: ARView?
     private let writer = MediaWriter()
@@ -62,11 +63,12 @@ final class SceneRecorder: NSObject {
         guard isRecording, !capturing, let arView else { return }
         capturing = true
         arView.snapshot(saveToHDR: false) { [weak self] image in
-            MainActor.assumeIsolated {
+            Task { @MainActor in
                 guard let self else { return }
                 self.capturing = false
                 guard self.isRecording, let cgImage = image?.cgImage else { return }
                 self.writer.appendVideo(cgImage, hostTimeSeconds: CACurrentMediaTime())
+                if let image { self.onPreview?(image) }
             }
         }
     }
@@ -261,6 +263,7 @@ private final class MediaWriter: @unchecked Sendable {
 
         guard writer.startWriting() else { return }
 
+        self.sessionStarted = false
         self.writer = writer
         self.videoInput = videoInput
         self.adaptor = adaptor
