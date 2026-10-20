@@ -1,41 +1,31 @@
-//
-//  film_spaceUITests.swift
-//  film spaceUITests
-//
-//  Created by Maximilian Prokopp on 26.06.26.
-//
-
 import XCTest
 
 final class film_spaceUITests: XCTestCase {
-
-    override func setUpWithError() throws {
-        // Put setup code here. This method is called before the invocation of each test method in the class.
-
-        // In UI tests it is usually best to stop immediately when a failure occurs.
+    @MainActor func testEditorAndCameraControlsStayReachable() throws {
         continueAfterFailure = false
-
-        // In UI tests it’s important to set the initial state - such as interface orientation - required for your tests before they run. The setUp method is a good place to do this.
-    }
-
-    override func tearDownWithError() throws {
-        // Put teardown code here. This method is called after the invocation of each test method in the class.
-    }
-
-    @MainActor
-    func testExample() throws {
-        // UI tests must launch the application that they test.
-        let app = XCUIApplication()
-        app.launch()
-
-        // Use XCTAssert and related functions to verify your tests produce the correct results.
-    }
-
-    @MainActor
-    func testLaunchPerformance() throws {
-        // This measures how long it takes to launch your application.
-        measure(metrics: [XCTApplicationLaunchMetric()]) {
-            XCUIApplication().launch()
+        let app = XCUIApplication(); app.launch()
+        XCTAssertTrue(app.buttons["modeEdit"].waitForExistence(timeout: 20))
+        for _ in 0..<3 {
+            app.buttons["modeCamera"].tap()
+            XCTAssertTrue(app.buttons["recordVideo"].waitForExistence(timeout: 5))
+            app.buttons["modeEdit"].tap()
         }
+        app.buttons["Menu"].tap(); app.buttons["Objects & scene"].tap()
+        XCTAssertTrue(app.buttons["Person"].waitForExistence(timeout: 5))
+        app.buttons["Person"].tap(); app.buttons["Car"].tap()
+        app.buttons["Done"].tap()
+        XCTAssertTrue(app.sliders["Smooth zoom"].waitForExistence(timeout: 5))
+        app.sliders["Smooth zoom"].adjust(toNormalizedSliderPosition: 0.6)
+        app.buttons["Zoom out"].tap()
+        app.buttons["modeCamera"].tap()
+        XCTAssertTrue(app.buttons["Zoom in"].isHittable)
+        app.buttons["Hide controls"].tap()
+        XCTAssertTrue(app.buttons["Controls"].isHittable)
+        app.buttons["Controls"].tap()
+        XCTAssertTrue(app.sliders["Smooth zoom"].isHittable)
+        XCUIDevice.shared.orientation = .landscapeLeft
+        XCTAssertTrue(app.buttons["modeEdit"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["modeEdit"].isHittable)
+        XCTAssertTrue(app.sliders["Smooth zoom"].isHittable)
     }
 }

@@ -42,7 +42,7 @@ struct ContentView: View {
                     }.frame(height: 52).background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
                     Spacer()
                     if !sceneState.isRecording && sceneState.mode == .camera {
-                        Text(sceneState.trackingStatus).font(.caption).padding(6).background(.ultraThinMaterial, in: Capsule()).allowsHitTesting(false)
+                        Text("60 fps target · " + sceneState.trackingStatus).font(.caption).padding(6).background(.ultraThinMaterial, in: Capsule()).allowsHitTesting(false)
                     }
                 }.padding(8)
                 if showControls {

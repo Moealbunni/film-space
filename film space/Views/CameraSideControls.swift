@@ -14,9 +14,12 @@ struct CameraSideControls: View {
             Text("Zoom \(state.zoomMultiplier, specifier: "%.2f")×").font(.caption.bold())
             Slider(value: $state.zoomMultiplier, in: 0.5...4).disabled(camera.lensLocked).accessibilityLabel("Smooth zoom")
             HStack {
-                hold("− Zoom", active: { zoomDirection = $0 ? -1 : 0 })
-                hold("+ Zoom", active: { zoomDirection = $0 ? 1 : 0 })
+                zoomButton("− Zoom", direction: -1)
+                zoomButton("+ Zoom", direction: 1)
             }.disabled(camera.lensLocked)
+            HStack { ForEach([Float(0.5), 1, 2, 4], id: \.self) { value in
+                Button("\(value, specifier: "%g")×") { state.zoomMultiplier = value }.buttonStyle(.borderless).disabled(camera.lensLocked)
+            } }
             Joystick(value: $joystick, size: 82).accessibilityLabel("Camera movement joystick")
             HStack {
                 hold("↓ Down", active: { vertical = $0 ? -1 : 0 })
@@ -50,6 +53,14 @@ struct CameraSideControls: View {
         }
         .onDisappear { camera.movementInput = .zero; joystick = .zero; vertical = 0; zoomDirection = 0 }
         .onChange(of: state.mode) { _, _ in joystick = .zero; vertical = 0; camera.movementInput = .zero }
+    }
+    private func zoomButton(_ label: String, direction: Float) -> some View {
+        Button(label) {
+            state.zoomMultiplier = min(max(state.zoomMultiplier * exp(direction * 0.15), 0.5), 4)
+        }.accessibilityLabel(direction > 0 ? "Zoom in" : "Zoom out")
+         .onLongPressGesture(minimumDuration: 0.25, pressing: { pressing in
+             if !pressing { zoomDirection = 0 }
+         }) { zoomDirection = direction }
     }
     private func hold(_ label: String, active: @escaping (Bool) -> Void) -> some View {
         Text(label).padding(8).background(.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))

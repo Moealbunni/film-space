@@ -87,6 +87,7 @@ struct ARCameraView: UIViewRepresentable {
 
             rebuildScene()
             let pan = UIPanGestureRecognizer(target: self, action: #selector(pan(_:)))
+            pan.maximumNumberOfTouches = 1
             arView.addGestureRecognizer(pan)
             arView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tap(_:))))
             arView.addGestureRecognizer(UIPinchGestureRecognizer(target: self, action: #selector(pinch(_:))))

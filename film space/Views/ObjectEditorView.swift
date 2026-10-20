@@ -85,7 +85,7 @@ struct ObjectEditorView: View {
                     Button("Save scene") { sceneState.saveScene() }
                     Button("Load saved scene") { sceneState.loadScene() }
                     if !sceneState.saveMessage.isEmpty { Text(sceneState.saveMessage) }
-                    Text("Save replaces the previous local save. Objects stay in place when switching to Camera. Windows scene-file transfer is not included.").font(.caption)
+                    Text("Save replaces the previous local save. Objects stay in place when switching to Camera. Use Desktop link to transfer scenes over Wi-Fi.").font(.caption)
                 }
             }
             .navigationTitle("Scene editor")

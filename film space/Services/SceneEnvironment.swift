@@ -37,19 +37,25 @@ enum SceneEnvironment {
         let divisions = 20
         let step = (gridSize * 2) / Float(divisions)
 
-        // Shared mesh + material reused across tiles for efficiency.
-        let tileMesh = MeshResource.generatePlane(width: step, depth: step)
-        let tileColor = UIColor(red: 0.34, green: 0.34, blue: 0.34, alpha: 1)
-        let tileMaterial = SimpleMaterial(color: tileColor, roughness: 1, isMetallic: false)
-
+        // One mesh replaces 200 separate checker tile entities/draw submissions.
+        var positions: [SIMD3<Float>] = []
+        var indices: [UInt32] = []
         for i in 0..<divisions {
             for j in 0..<divisions where (i + j) % 2 == 0 {
-                let tile = ModelEntity(mesh: tileMesh, materials: [tileMaterial])
-                let x = -gridSize + (Float(i) + 0.5) * step
-                let z = -gridSize + (Float(j) + 0.5) * step
-                tile.position = [x, 0, z]
-                root.addChild(tile)
+                let x = -gridSize + Float(i) * step
+                let z = -gridSize + Float(j) * step
+                let n = UInt32(positions.count)
+                positions += [[x,0,z], [x+step,0,z], [x+step,0,z+step], [x,0,z+step]]
+                indices += [n,n+2,n+1,n,n+3,n+2]
             }
+        }
+        var descriptor = MeshDescriptor(name: "Checkerboard")
+        descriptor.positions = MeshBuffers.Positions(positions)
+        descriptor.normals = MeshBuffers.Normals(Array(repeating: SIMD3<Float>(0,1,0), count: positions.count))
+        descriptor.primitives = .triangles(indices)
+        if let mesh = try? MeshResource.generate(from: [descriptor]) {
+            let material = SimpleMaterial(color: UIColor(white: 0.34, alpha: 1), roughness: 1, isMetallic: false)
+            root.addChild(ModelEntity(mesh: mesh, materials: [material]))
         }
     }
 

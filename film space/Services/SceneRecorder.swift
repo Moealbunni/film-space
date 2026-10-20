@@ -40,7 +40,7 @@ final class SceneRecorder: NSObject {
         startAudio()
 
         let link = CADisplayLink(target: self, selector: #selector(captureFrame))
-        link.preferredFramesPerSecond = 30
+        link.preferredFramesPerSecond = 60
         link.add(to: .main, forMode: .common)
         displayLink = link
     }
@@ -135,6 +135,7 @@ extension SceneRecorder: AVCaptureAudioDataOutputSampleBufferDelegate {
 private final class MediaWriter: @unchecked Sendable {
     private let queue = DispatchQueue(label: "com.filmspace.mediawriter")
     private let maxLongSide = 1280
+    private let videoSlot = DispatchSemaphore(value: 1)
 
     private var writer: AVAssetWriter?
     private var videoInput: AVAssetWriterInput?
@@ -151,7 +152,10 @@ private final class MediaWriter: @unchecked Sendable {
     }
 
     func appendVideo(_ cgImage: CGImage, hostTimeSeconds: Double) {
+        guard videoSlot.wait(timeout: .now()) == .success else { return }
+        let slot = videoSlot
         queue.async { [weak self] in
+            defer { slot.signal() }
             guard let self, let writer = self.writer, writer.status == .writing,
                   let videoInput = self.videoInput, let adaptor = self.adaptor,
                   let size = self.size else { return }
@@ -230,7 +234,13 @@ private final class MediaWriter: @unchecked Sendable {
         let videoSettings: [String: Any] = [
             AVVideoCodecKey: AVVideoCodecType.h264,
             AVVideoWidthKey: width,
-            AVVideoHeightKey: height
+            AVVideoHeightKey: height,
+            AVVideoCompressionPropertiesKey: [
+                AVVideoExpectedSourceFrameRateKey: 60,
+                AVVideoAverageBitRateKey: 12_000_000,
+                AVVideoMaxKeyFrameIntervalKey: 120,
+                AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel
+            ]
         ]
         let videoInput = AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
         videoInput.expectsMediaDataInRealTime = true
